@@ -16,15 +16,11 @@
     padding: 48px 32px;
   }
 
-  .container {
-    max-width: 1400px;
-    margin: 0 auto;
-  }
+  .container { max-width: 1200px; margin: 0 auto; }
 
-  /* Hero */
   .hero {
     text-align: center;
-    margin-bottom: 48px;
+    margin-bottom: 40px;
   }
   .hero h1 {
     font-size: 56px;
@@ -56,13 +52,13 @@
     letter-spacing: 0.5px;
   }
 
-  /* Bento Grid */
+  /* Bento Grid — all cells square for alignment */
   .bento {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-auto-rows: 220px;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 260px;
     gap: 12px;
-    margin-bottom: 48px;
+    margin-bottom: 40px;
   }
 
   .cell {
@@ -78,19 +74,16 @@
     transform: translateY(-2px);
     border-color: #2a2a3e;
   }
-
   .cell img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
   }
-
   .cell .label {
     position: absolute;
     bottom: 0;
-    left: 0;
-    right: 0;
+    left: 0; right: 0;
     padding: 14px 16px;
     background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
     font-size: 13px;
@@ -105,28 +98,19 @@
     font-weight: 400;
   }
 
-  /* Grid spans */
+  /* Size variants */
   .s-hero { grid-column: span 2; grid-row: span 2; }
   .s-wide { grid-column: span 2; }
-  .s-tall { grid-row: span 2; }
   .s-normal { grid-column: span 1; grid-row: span 1; }
 
-  /* Dark accent for special cells */
-  .cell.accent {
-    background: #0d1a0d;
-    border-color: #1a2e1a;
-  }
-  .cell.amber {
-    background: #1a1408;
-    border-color: #2e2510;
-  }
+  .cell.accent { background: #0d1a0d; border-color: #1a2e1a; }
+  .cell.amber { background: #1a1408; border-color: #2e2510; }
 
-  /* Info section */
   .info-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 12px;
-    margin-bottom: 48px;
+    margin-bottom: 40px;
   }
   .info-card {
     padding: 24px;
@@ -148,7 +132,6 @@
     line-height: 1.5;
   }
 
-  /* Footer */
   .footer {
     text-align: center;
     padding: 32px 0;
@@ -157,15 +140,9 @@
     color: #3a3a4a;
   }
 
-  /* Responsive */
-  @media (max-width: 900px) {
-    .bento { grid-template-columns: repeat(2, 1fr); }
-    .s-hero { grid-column: span 2; grid-row: span 1; }
-    .s-tall { grid-row: span 1; }
-  }
-  @media (max-width: 500px) {
-    .bento { grid-template-columns: 1fr; }
-    .s-hero, .s-wide { grid-column: span 1; }
+  @media (max-width: 700px) {
+    .bento { grid-template-columns: 1fr; grid-auto-rows: 200px; }
+    .s-hero, .s-wide { grid-column: span 1; grid-row: span 1; }
     body { padding: 24px 16px; }
   }
 </style>
@@ -179,47 +156,11 @@
     <span class="badge">● 5 SCREENSHOTS  ·  1920×1080  ·  FOOT TERMINAL</span>
   </div>
 
-  <!-- Bento Grid -->
+  <!-- Bento Grid — all square thumbnails for perfect alignment -->
   <div class="bento">
 
-    <!-- Hero: playing with full visualizer -->
+    <!-- Hero: paused (full shot, 2×2) -->
     <div class="cell s-hero amber">
-      <img src="../Shots/playing-full.png" alt="MatPlay playing with full CAVA visualizer">
-      <div class="label">
-        Full Spectrum
-        <div class="sub">CAVA · 48 bars · PRIVATE FIFO</div>
-      </div>
-    </div>
-
-    <!-- Playing with lyrics -->
-    <div class="cell s-tall">
-      <img src="../Shots/playing-lyrics.png" alt="MatPlay playing with lyrics panel">
-      <div class="label">
-        Lyrics Mode
-        <div class="sub">LRC · TRAVELING WINDOW</div>
-      </div>
-    </div>
-
-    <!-- Playing with visualizer -->
-    <div class="cell s-normal accent">
-      <img src="../Shots/playing-visualizer.png" alt="MatPlay playing with CAVA visualizer">
-      <div class="label">
-        Visualizer
-        <div class="sub">CAVA · MPG123</div>
-      </div>
-    </div>
-
-    <!-- Green palette -->
-    <div class="cell s-normal accent">
-      <img src="../Shots/playing-green.png" alt="MatPlay with adaptive green palette">
-      <div class="label">
-        Adaptive Palette
-        <div class="sub">COVER-ART DRIVEN</div>
-      </div>
-    </div>
-
-    <!-- Paused -->
-    <div class="cell s-wide">
       <img src="../Shots/paused.png" alt="MatPlay paused state">
       <div class="label">
         Paused
@@ -227,9 +168,45 @@
       </div>
     </div>
 
+    <!-- Lyrics mode -->
+    <div class="cell s-normal">
+      <img src="../Shots/playing-lyrics.png" alt="MatPlay lyrics mode">
+      <div class="label">
+        Lyrics
+        <div class="sub">LRC · TRAVELING WINDOW</div>
+      </div>
+    </div>
+
+    <!-- Green palette -->
+    <div class="cell s-normal accent">
+      <img src="../Shots/playing-green.png" alt="MatPlay adaptive palette">
+      <div class="label">
+        Adaptive
+        <div class="sub">COVER-ART DRIVEN</div>
+      </div>
+    </div>
+
+    <!-- Visualizer -->
+    <div class="cell s-normal">
+      <img src="../Shots/playing-visualizer.png" alt="MatPlay CAVA visualizer">
+      <div class="label">
+        Visualizer
+        <div class="sub">CAVA · MPG123</div>
+      </div>
+    </div>
+
+    <!-- Full spectrum (wide) -->
+    <div class="cell s-wide">
+      <img src="../Shots/playing-full.png" alt="MatPlay full visualizer">
+      <div class="label">
+        Full Spectrum
+        <div class="sub">CAVA · 48 BARS · PRIVATE FIFO</div>
+      </div>
+    </div>
+
   </div>
 
-  <!-- Feature Info Cards -->
+  <!-- Feature Cards -->
   <div class="info-grid">
     <div class="info-card">
       <h3>PLAYBACK</h3>
