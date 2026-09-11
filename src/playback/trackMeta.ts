@@ -8,6 +8,7 @@ export type TrackMeta = {
   title: string;
   artist: string;
   formatLabel: string;
+  streamLabel: string;
   durationMs: number | undefined;
   coverSrc: string;
 };
@@ -20,6 +21,7 @@ export function metaFromFolder(track: Track, fallbackCover: string): TrackMeta {
     title: track.title,
     artist: track.artist,
     formatLabel: 'MP3',
+    streamLabel: 'DIRECT STREAM',
     durationMs: undefined,
     coverSrc: fallbackCover,
   };
@@ -47,6 +49,9 @@ export async function loadTrackMeta(
     if (parsed.format.bitrate) parts.push(`${Math.round(parsed.format.bitrate / 1000)}KBPS`);
     if (parsed.format.sampleRate) parts.push(`${(parsed.format.sampleRate / 1000).toFixed(1)}KHZ`);
     meta.formatLabel = parts.join(' · ');
+    meta.streamLabel = parsed.format.sampleRate
+      ? `PCM ${(parsed.format.sampleRate / 1000).toFixed(1)} KHZ • DIRECT STREAM`
+      : 'DIRECT STREAM';
 
     if (typeof parsed.format.duration === 'number' && Number.isFinite(parsed.format.duration)) {
       meta.durationMs = Math.round(parsed.format.duration * 1000);

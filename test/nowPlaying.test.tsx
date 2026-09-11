@@ -1,7 +1,6 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { mkdtempSync } from 'node:fs';
 import { act } from 'react';
 import { describe, expect, it } from 'vitest';
 import React from 'react';
@@ -10,18 +9,22 @@ import { stepViz, applySpectrum } from '../src/ui/visualizerEngine.js';
 
 function musicFixture(): string {
   const root = mkdtempSync(path.join(os.tmpdir(), 'matplay-app-'));
-  const song = path.join(root, 'Work', 'ARJN', 'KALYANI');
-  mkdirSync(song, { recursive: true });
+  const kalyani = path.join(root, 'Work', 'ARJN', 'KALYANI');
+  mkdirSync(kalyani, { recursive: true });
   // Empty file: tags unparseable, so the folder-name fallback path is used.
-  writeFileSync(path.join(song, 'song.mp3'), '');
-  writeFileSync(path.join(song, 'song.lrc'), '[00:01.00] hello\n');
+  writeFileSync(path.join(kalyani, 'song.mp3'), '');
+  writeFileSync(path.join(kalyani, 'song.lrc'), '[00:01.00] hello\n');
+  const jupiter = path.join(root, 'Jupiter', 'SH3RWIN', 'LOUD');
+  mkdirSync(jupiter, { recursive: true });
+  writeFileSync(path.join(jupiter, 'track.mp3'), '');
   return root;
 }
 
+process.env.MATPLAY_MUSIC_ROOT = musicFixture();
+const { App } = await import('../src/app/App.js');
+
 describe('now playing mock', () => {
   it('renders the scanned queue with folder-name fallback', async () => {
-    process.env.MATPLAY_MUSIC_ROOT = musicFixture();
-    const { App } = await import('../src/app/App.js');
     const setup = await testRender(<App />, { width: 100, height: 48 });
     await setup.renderOnce();
     await act(async () => {
@@ -32,7 +35,21 @@ describe('now playing mock', () => {
     expect(frame).toContain('PLAYING');
     expect(frame).toContain('ARJN');
     setup.renderer.destroy();
-    delete process.env.MATPLAY_MUSIC_ROOT;
+  });
+
+  it('searches the library by title', async () => {
+    const setup = await testRender(<App />, { width: 110, height: 50 });
+    await setup.renderOnce();
+    await setup.mockInput.pressKey('/');
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await setup.renderOnce();
+    await setup.mockInput.typeText('kal');
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await setup.renderOnce();
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain('1 match');
+    expect(frame).toContain('KALYANI');
+    setup.renderer.destroy();
   });
 });
 

@@ -6,7 +6,11 @@ export type ShortcutsPanelProps = {
 
 const SHORTCUTS: Array<[string, string]> = [
   ['SPACE', 'Play / pause'],
+  ['N / P', 'Next / previous'],
   ['← →', 'Seek 5 seconds'],
+  ['/', 'Search library'],
+  ['B', 'Playlists'],
+  ['Q', 'Queue'],
   ['1', 'Toggle shuffle'],
   ['2', 'Toggle loop playlist'],
   ['3', 'Toggle loop single'],
@@ -14,7 +18,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ['M', 'Mute'],
   ['S', 'Settings menu'],
   ['?', 'This panel'],
-  ['Q', 'Quit'],
+  ['q', 'Quit'],
 ];
 
 /** Discoverable key map overlay. */

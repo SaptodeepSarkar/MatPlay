@@ -8,5 +8,8 @@ export default defineConfig({
   test: {
     include: ['test/**/*.test.{ts,tsx}'],
     environment: 'node',
+    env: {
+      MATPLAY_NO_AUDIO: '1',
+    },
   },
 });

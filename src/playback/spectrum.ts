@@ -39,7 +39,7 @@ export class CavaSpectrum {
     this.bars = options.bars ?? DEFAULT_BARS;
     this.options = {
       bars: this.bars,
-      framerate: options.framerate ?? 20,
+      framerate: options.framerate ?? 30,
       inputMethod: options.inputMethod ?? 'pulse',
       fifoPath: options.fifoPath,
     };

@@ -100,6 +100,12 @@ export class FfplayBackend implements AudioBackend {
   private startProcess(offsetMs: number): void {
     if (!this.currentPath) return;
     this.stopProcess();
+    // Test harness and headless runs: never spawn real audio output.
+    if (process.env.MATPLAY_NO_AUDIO === '1') {
+      this.startedAt = Date.now();
+      this.playing = true;
+      return;
+    }
     this.killedByUs = false;
     const offsetSec = Math.max(0, offsetMs / 1000).toFixed(2);
     const child = spawn('ffplay', [
