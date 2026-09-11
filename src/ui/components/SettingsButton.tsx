@@ -63,8 +63,8 @@ function settingsIcon(signal: string, ink: string): Uint8Array {
   ]);
 }
 
-export function SettingsButton({ signal, ink, onActivate }: { signal: string; ink: string; onActivate: () => void }): React.ReactNode {
-  const source = useMemo(() => settingsIcon(signal, ink), [signal, ink]);
+export function SettingsButton({ color, ink, onActivate }: { color: string; ink: string; onActivate: () => void }): React.ReactNode {
+  const source = useMemo(() => settingsIcon(color, ink), [color, ink]);
   return (
     <box width={6} height={3} onMouseDown={onActivate} backgroundColor="transparent">
       <image source={source} fit="fit" protocol="auto" style={{ width: 6, height: 3 }} />
