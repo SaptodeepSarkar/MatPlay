@@ -5,6 +5,30 @@ re-skins itself from the current track's cover art (with a smooth fade),
 cover art renders as real pixels via terminal graphics protocols, and a
 CAVA-driven visualizer fills the screen behind everything.
 
+## What MatPlay Does
+
+MatPlay is a complete music player that runs inside your terminal. It scans
+your local music library (`Playlist / Artist / Song / song.mp3`), indexes it,
+and gives you a full playback experience — play, pause, seek, shuffle, queue,
+loop — without ever opening a browser or external app. It renders the now
+playing screen with cover art, a live CAVA spectrum visualizer, a lyrics
+panel, and playback controls, all in a terminal-native interface that adapts
+its colors to the current track's album art.
+
+Key features:
+
+- **Cover-art-adaptive theming** — the visualizer and UI palette shift with
+  the current track's cover art (ffmpeg sampling, smooth fade).
+- **Live spectrum** — CAVA decoding a private FIFO feed; desktop audio is
+  never captured. Procedural fallback when CAVA is absent.
+- **Gapless playback** — `mpg123` backend via remote protocol; `ffplay` as
+  fallback.
+- **MPRIS presence** — media keys work from KDE/GNOME applets.
+- **Search, playlists, queue** — full library management in the terminal.
+- **Lyrics** — LRC timestamp parsing with 3-line traveling window; plain
+  `.txt` fallback.
+- **Cross-platform** — Linux, macOS, Windows (ffplay + procedural visualizer).
+
 ## Stack
 
 - TypeScript + Node.js 26.4+ (`--experimental-ffi` required by OpenTUI)
@@ -68,6 +92,20 @@ Node.js ≥ 26.4 never comes from distro repos — use fnm/nvm/nodejs.org
 on Linux, `winget install OpenJS.NodeJS` on Windows (the script
 re-verifies the version and fails loudly if winget tracks an older one).
 
+## Screenshots
+
+Real screenshots of MatPlay running in a terminal — no mockups:
+
+| State | Screenshot |
+| --- | --- |
+| Paused | `Shots/paused.png` |
+| Playing (with CAVA visualizer) | `Shots/playing-visualizer.png` |
+| Playing (with lyrics) | `Shots/playing-lyrics.png` |
+| Playing (full visualizer) | `Shots/playing-full.png` |
+| Playing (adaptive green palette) | `Shots/playing-green.png` |
+
+All screenshots are 1920×1080 captured from the foot terminal.
+
 ## Config
 
 `~/.config/matplay/config.json` (Linux/macOS) or
@@ -120,8 +158,9 @@ src/
                       # SpectrumFeed (private fifo), trackMeta
   lyrics/             # lrc/txt parser
   utils/              # stable ids, path helpers
-test/                 # vitest suite
-stitch/               # Stitch design reference + sample art
+test/                 # vitest suite (30 tests)
+stitch/               # Stitch design reference + sample art (mock screenshots removed — use Shots/ for real screenshots)
+Shots/                # real screenshots from running the app
 installer/            # install.sh (linux/macOS), install.ps1 (windows)
 ```
 

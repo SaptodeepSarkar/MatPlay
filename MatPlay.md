@@ -26,7 +26,7 @@ interface using system decoders (`mpg123` for gapless, `ffplay` as fallback).
 - Language: TypeScript.
 - Runtime: Node.js.
 - UI: terminal-based TUI, not browser GUI.
-- Preferred UI framework: Ink + React.
+- Preferred UI framework: OpenTUI + React.
 - No MPD.
 - No Mopidy.
 - No background music daemon.
@@ -362,7 +362,7 @@ installer/            # install.sh (linux/macOS), install.ps1 (windows)
 
 ## MVP Milestones
 
-1. Create TypeScript + Ink project.
+1. Create TypeScript project with OpenTUI + React 19.
 2. Implement first-run setup and config saving.
 3. Implement folder scanner with diagnostics.
 4. Implement main UI layout with fake playback state.
@@ -411,7 +411,7 @@ Hard requirements:
 - Language: TypeScript.
 - Runtime: Node.js.
 - UI: TUI, not browser GUI.
-- Preferred UI framework: Ink + React.
+- Preferred UI framework: OpenTUI + React.
 - Do not use MPD, Mopidy, or any external music server.
 - Do not require a background daemon.
 - The app must be self-contained from the user's perspective.
