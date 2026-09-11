@@ -870,6 +870,7 @@ export function App(): React.ReactNode {
                 artist={meta.artist}
                 formatLabel={meta.formatLabel}
                 theme={theme}
+                maxWidth={seekWidth}
               />
               <SeekBar
                 positionMs={positionMs}

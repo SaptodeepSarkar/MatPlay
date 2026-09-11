@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { InputRenderable } from '@opentui/core';
 import type { Track } from '../../library/types.js';
 import type { StitchTheme } from '../stitchTheme.js';
+import { truncateText } from '../text.js';
 
 export type SearchOverlayProps = {
   query: string;
@@ -51,7 +52,7 @@ export function SearchOverlay({
           return (
           <box key={track.id} backgroundColor={index === selectedIndex ? theme.accent : undefined}>
             <text fg={index === selectedIndex ? theme.accentInk : theme.text}>
-              {index === selectedIndex ? <strong>{`▸ ${track.title} — ${track.artist}`}</strong> : `  ${track.title} — ${track.artist}`}
+              {index === selectedIndex ? <strong>{truncateText(`▸ ${track.title} — ${track.artist}`, 47)}</strong> : truncateText(`  ${track.title} — ${track.artist}`, 47)}
             </text>
           </box>
           );

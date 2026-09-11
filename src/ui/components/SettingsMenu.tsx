@@ -1,4 +1,5 @@
 import type { StitchTheme } from '../stitchTheme.js';
+import { truncateText } from '../text.js';
 
 export type SettingsMenuProps = {
   musicDir: string;
@@ -56,7 +57,7 @@ export function SettingsMenu({
       ? { value: 'ON', valueFg: theme.signal }
       : { value: 'OFF', valueFg: theme.muted };
   const settingRows = [
-    `MUSIC ROOT  ${musicDir}`,
+    truncateText(`MUSIC ROOT  ${musicDir}`, 29),
     `THEME       ${themeMode.toUpperCase()}`,
     `ACCENT      ${accentColor.toUpperCase()}`,
     `VIZ GAIN    ${vizGain.toFixed(1)}`,

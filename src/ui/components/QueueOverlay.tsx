@@ -1,5 +1,6 @@
 import type { Track } from '../../library/types.js';
 import type { StitchTheme } from '../stitchTheme.js';
+import { truncateText } from '../text.js';
 
 export type QueueOverlayProps = {
   queue: Track[];
@@ -48,7 +49,7 @@ export function QueueOverlay({
           const isCurrent = position === currentPos;
           const isSelected = position === selectedIndex;
           const marker = isCurrent ? '♪' : isSelected ? '▸' : ' ';
-          const row = `${marker} ${String(position + 1).padStart(2, '0')}  ${track.title} — ${track.artist}`;
+          const row = truncateText(`${marker} ${String(position + 1).padStart(2, '0')}  ${track.title} — ${track.artist}`, 47);
           if (isSelected) {
             return (
               <box key={track.id} backgroundColor={theme.accent}>

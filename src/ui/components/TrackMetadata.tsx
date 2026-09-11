@@ -1,4 +1,5 @@
 import type { StitchTheme } from '../stitchTheme.js';
+import { truncateText } from '../text.js';
 
 export type TrackMetadataProps = {
   trackNo: number;
@@ -6,6 +7,7 @@ export type TrackMetadataProps = {
   artist: string;
   formatLabel: string;
   theme: StitchTheme;
+  maxWidth?: number;
 };
 
 export function TrackMetadata({
@@ -14,6 +16,7 @@ export function TrackMetadata({
   artist,
   formatLabel,
   theme,
+  maxWidth = 44,
 }: TrackMetadataProps): React.ReactNode {
   return (
     <box flexDirection="column" gap={1} backgroundColor="transparent">
@@ -23,10 +26,10 @@ export function TrackMetadata({
         </strong>
       </text>
       <text fg={theme.text}>
-        <strong>{title.toUpperCase()}</strong>
+        <strong>{truncateText(title.toUpperCase(), maxWidth)}</strong>
       </text>
       <text fg={theme.muted}>
-        {artist.toUpperCase()}  /  {formatLabel}
+        {truncateText(`${artist.toUpperCase()}  /  ${formatLabel}`, maxWidth)}
       </text>
     </box>
   );

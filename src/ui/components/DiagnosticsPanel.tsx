@@ -1,6 +1,7 @@
 import { formatDiagnostic } from '../../library/diagnostics.js';
 import type { Diagnostic } from '../../library/types.js';
 import type { StitchTheme } from '../stitchTheme.js';
+import { truncateText } from '../text.js';
 
 export function DiagnosticsPanel({ diagnostics, theme }: { diagnostics: Diagnostic[]; theme: StitchTheme }): React.ReactNode {
   return (
@@ -9,7 +10,7 @@ export function DiagnosticsPanel({ diagnostics, theme }: { diagnostics: Diagnost
       <box height={12} overflow="hidden" flexDirection="column">
         {diagnostics.length === 0 ? <text fg={theme.text}>No library problems found.</text> : diagnostics.slice(0, 12).map((item, index) => (
           <text key={`${item.code}-${item.path ?? index}`} fg={item.level === 'error' ? theme.signal : item.level === 'warning' ? theme.accent : theme.muted}>
-            {formatDiagnostic(item)}
+            {truncateText(formatDiagnostic(item), 63)}
           </text>
         ))}
       </box>

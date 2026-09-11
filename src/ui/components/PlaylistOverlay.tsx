@@ -1,5 +1,6 @@
 import type { Playlist } from '../../library/types.js';
 import type { StitchTheme } from '../stitchTheme.js';
+import { truncateText } from '../text.js';
 
 export type PlaylistOverlayProps = {
   playlists: Playlist[];
@@ -31,6 +32,9 @@ export function PlaylistOverlay({
       active: activePlaylist === playlist.name,
     })),
   ];
+  const windowSize = 10;
+  const start = Math.max(0, Math.min(selectedIndex - 3, rows.length - windowSize));
+  const visibleRows = rows.slice(start, start + windowSize);
 
   return (
     <box
@@ -46,14 +50,17 @@ export function PlaylistOverlay({
         <strong>[ PLAYLISTS ]</strong>
       </text>
       <box flexDirection="column">
-        {rows.map((row, index) => (
+        {visibleRows.map((row, offset) => {
+          const index = start + offset;
+          const label = truncateText(`${index === selectedIndex ? '▸' : ' '} ${row.label}${row.active ? '  ●' : `  · ${row.detail}`}`, 39);
+          return (
           <box key={row.key} backgroundColor={index === selectedIndex ? theme.accent : undefined}>
             <text fg={index === selectedIndex ? theme.accentInk : theme.text}>
-              {index === selectedIndex ? <strong>{`▸ ${row.label}`}</strong> : `  ${row.label}`}
-              {row.active ? '  ●' : `  · ${row.detail}`}
+              {index === selectedIndex ? <strong>{label}</strong> : label}
             </text>
           </box>
-        ))}
+          );
+        })}
       </box>
       <text fg={theme.muted}>↑↓ move · ENTER select · ESC close</text>
     </box>
