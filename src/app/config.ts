@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
@@ -45,6 +45,10 @@ export function configDir(): string {
 
 export function configPath(): string {
   return path.join(configDir(), 'config.json');
+}
+
+export function configExists(): boolean {
+  return existsSync(configPath());
 }
 
 /** Load config, merging over defaults so new keys survive old files. */

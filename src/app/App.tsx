@@ -29,7 +29,8 @@ import { Mpg123Backend } from '../playback/Mpg123Backend.js';
 import { loadTrackMeta, metaFromFolder, type TrackMeta } from '../playback/trackMeta.js';
 import { MediaPresence } from '../platform/presence.js';
 import { onShutdown, runShutdown } from './shutdown.js';
-import { loadConfig, saveConfig, type AppConfig } from './config.js';
+import { configExists, loadConfig, saveConfig, type AppConfig } from './config.js';
+import { SetupScreen } from '../ui/components/SetupScreen.js';
 import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
 import type { Track } from '../library/types.js';
@@ -67,6 +68,9 @@ export function App(): React.ReactNode {
   const vizRows = Math.max(8, height);
 
   const [config, setConfig] = useState<AppConfig>(() => loadConfig());
+  const [setupOpen, setSetupOpen] = useState(() => !configExists());
+  const [setupPath, setSetupPath] = useState(config.musicRoot);
+  const [setupDiagnostics, setSetupDiagnostics] = useState<ReturnType<typeof scanLibrarySync>['diagnostics']>([]);
   const configRef = useRef(config);
   const saveTimer = useRef<NodeJS.Timeout | undefined>(undefined);
   const saveSoon = (): void => {
@@ -578,6 +582,20 @@ export function App(): React.ReactNode {
     const RIGHT = ['right', 'ArrowRight'];
     const CONFIRM = ['return', 'enter'];
 
+    if (setupOpen) {
+      if (has(...CONFIRM)) {
+        const candidate = scanLibrarySync(setupPath);
+        setSetupDiagnostics(candidate.diagnostics);
+        if (!candidate.diagnostics.some((item) => item.level === 'error')) {
+          updateConfig({ musicRoot: setupPath });
+          setSetupOpen(false);
+        }
+      } else if (has('q') && !key.shift) {
+        quit();
+      }
+      return;
+    }
+
     // Text input owns every key except navigation while searching.
     if (searchOpen) {
       if (has('escape')) {
@@ -683,6 +701,20 @@ export function App(): React.ReactNode {
 
   const positionMsRef = useRef(positionMs);
   positionMsRef.current = positionMs;
+
+  if (setupOpen) {
+    return (
+      <SetupScreen
+        path={setupPath}
+        diagnostics={setupDiagnostics}
+        theme={theme}
+        onPath={(value) => {
+          setSetupPath(value);
+          setSetupDiagnostics([]);
+        }}
+      />
+    );
+  }
 
   return (
     <box width="100%" height="100%" backgroundColor={theme.appBg} flexDirection="column">
