@@ -869,13 +869,22 @@ export function App(): React.ReactNode {
       </box>
 
       <box flexDirection="row" alignItems="center" paddingX={2} paddingTop={1} backgroundColor="transparent">
-        <text fg={theme.accent} onMouseDown={() => {
-          const opening = !menuOpen;
-          closeOverlays();
-          setMenuOpen(opening);
-        }}>
-          <strong>{'  ⚙  '}</strong>
-        </text>
+        <box
+          width={7}
+          height={3}
+          borderStyle="rounded"
+          borderColor={theme.text}
+          backgroundColor={theme.complement}
+          justifyContent="center"
+          alignItems="center"
+          onMouseDown={() => {
+            const opening = !menuOpen;
+            closeOverlays();
+            setMenuOpen(opening);
+          }}
+        >
+          <text fg={theme.appBg}><strong>{'\uf013'}</strong></text>
+        </box>
         <box flexGrow={1} />
         <text fg={library.diagnostics.length > 0 ? theme.signal : theme.muted}>
           {libraryNotice ?? (library.diagnostics.length > 0 ? `⚠ ${library.diagnostics.length} · D DETAILS` : meta.streamLabel)}

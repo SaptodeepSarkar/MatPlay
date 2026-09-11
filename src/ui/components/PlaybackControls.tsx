@@ -1,5 +1,16 @@
 import type { StitchTheme } from '../stitchTheme.js';
 
+// Font Awesome codepoints included by Nerd Fonts. These stay single-cell in
+// terminal renderers and avoid the uneven geometry of text/emoji controls.
+const ICONS = {
+  shuffle: '\uf074',
+  previous: '\uf048',
+  play: '\uf04b',
+  pause: '\uf04c',
+  next: '\uf051',
+  repeat: '\uf2f9',
+};
+
 export type PlaybackControlsProps = {
   isPlaying: boolean;
   shuffle: boolean;
@@ -59,8 +70,8 @@ export function PlaybackControls({
 }: PlaybackControlsProps): React.ReactNode {
   return (
     <box flexDirection="row" gap={1}>
-      <IconButton glyph="⇄" active={shuffle} activeFg={theme.signal} theme={theme} onActivate={onToggleShuffle} />
-      <IconButton glyph="◀◀" active={false} activeFg={theme.text} theme={theme} onActivate={onPrevious} />
+      <IconButton glyph={ICONS.shuffle} active={shuffle} activeFg={theme.signal} theme={theme} onActivate={onToggleShuffle} />
+      <IconButton glyph={ICONS.previous} active={false} activeFg={theme.text} theme={theme} onActivate={onPrevious} />
       <box
         height={3}
         backgroundColor={theme.accent}
@@ -69,12 +80,12 @@ export function PlaybackControls({
         onMouseDown={onTogglePlay}
       >
         <text fg={theme.accentInk}>
-          <strong>{isPlaying ? '  ❚❚ PLAYING  ' : '  ▶ PAUSED  '}</strong>
+          <strong>{isPlaying ? `  ${ICONS.pause} PLAYING  ` : `  ${ICONS.play} PAUSED  `}</strong>
         </text>
       </box>
-      <IconButton glyph="▶▶" active={false} activeFg={theme.text} theme={theme} onActivate={onNext} />
-      <IconButton glyph="↻1" active={loopSingle} activeFg={theme.signal} theme={theme} onActivate={onToggleLoopSingle} />
-      <IconButton glyph="↻" active={loopList} activeFg={theme.text} theme={theme} onActivate={onToggleLoopList} />
+      <IconButton glyph={ICONS.next} active={false} activeFg={theme.text} theme={theme} onActivate={onNext} />
+      <IconButton glyph={`${ICONS.repeat}1`} active={loopSingle} activeFg={theme.signal} theme={theme} onActivate={onToggleLoopSingle} />
+      <IconButton glyph={ICONS.repeat} active={loopList} activeFg={theme.text} theme={theme} onActivate={onToggleLoopList} />
     </box>
   );
 }
