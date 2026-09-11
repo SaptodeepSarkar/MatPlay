@@ -1,9 +1,21 @@
 # MatPlay
 
-Local-first terminal music player with a cover-art-adaptive TUI. The UI
-re-skins itself from the current track's cover art (with a smooth fade),
-cover art renders as real pixels via terminal graphics protocols, and a
-CAVA-driven visualizer fills the screen behind everything.
+> Local-first terminal music player with a cover-art-adaptive TUI. The UI
+> re-skins itself from the current track's cover art (with a smooth fade),
+> cover art renders as real pixels via terminal graphics protocols, and a
+> CAVA-driven visualizer fills the screen behind everything.
+
+<table style="border:none;margin:0;padding:0;">
+<tr>
+<td style="padding:4px 10px;border:1px solid #1e1e2e;border-radius:6px;font-family:monospace;font-size:11px;color:#8a8a9a;">v0.1.0</td>
+<td style="padding:4px 10px;border:1px solid #1e1e2e;border-radius:6px;font-family:monospace;font-size:11px;color:#8a8a9a;">TypeScript</td>
+<td style="padding:4px 10px;border:1px solid #1e1e2e;border-radius:6px;font-family:monospace;font-size:11px;color:#8a8a9a;">OpenTUI</td>
+<td style="padding:4px 10px;border:1px solid #1e1e2e;border-radius:6px;font-family:monospace;font-size:11px;color:#8a8a9a;">React 19</td>
+<td style="padding:4px 10px;border:1px solid #1e1e2e;border-radius:6px;font-family:monospace;font-size:11px;color:#8a8a9a;">Cross-Platform</td>
+</tr>
+</table>
+
+---
 
 ## What MatPlay Does
 
@@ -15,19 +27,24 @@ playing screen with cover art, a live CAVA spectrum visualizer, a lyrics
 panel, and playback controls, all in a terminal-native interface that adapts
 its colors to the current track's album art.
 
-Key features:
+<b>Key features:</b>
 
-- **Cover-art-adaptive theming** — the visualizer and UI palette shift with
-  the current track's cover art (ffmpeg sampling, smooth fade).
-- **Live spectrum** — CAVA decoding a private FIFO feed; desktop audio is
-  never captured. Procedural fallback when CAVA is absent.
-- **Gapless playback** — `mpg123` backend via remote protocol; `ffplay` as
-  fallback.
-- **MPRIS presence** — media keys work from KDE/GNOME applets.
-- **Search, playlists, queue** — full library management in the terminal.
-- **Lyrics** — LRC timestamp parsing with 3-line traveling window; plain
-  `.txt` fallback.
-- **Cross-platform** — Linux, macOS, Windows (ffplay + procedural visualizer).
+<table style="width:100%;border-collapse:collapse;margin:12px 0;">
+<tr>
+<td style="padding:10px 14px;border:1px solid #1e1e2e;border-radius:8px;width:50%;"><b>🎵 Cover-art theming</b><br><font color="#8a8a9a">Palette + visualizer shift with album art</font></td>
+<td style="padding:10px 14px;border:1px solid #1e1e2e;border-radius:8px;width:50%;"><b>📊 CAVA spectrum</b><br><font color="#8a8a9a">Private FIFO feed — no desktop audio captured</font></td>
+</tr>
+<tr>
+<td style="padding:10px 14px;border:1px solid #1e1e2e;border-radius:8px;width:50%;"><b>⏩ Gapless playback</b><br><font color="#8a8a9a">mpg123 primary + ffplay fallback</font></td>
+<td style="padding:10px 14px;border:1px solid #1e1e2e;border-radius:8px;width:50%;"><b>🔑 Media keys</b><br><font color="#8a8a9a">MPRIS — KDE/GNOME applet integration</font></td>
+</tr>
+<tr>
+<td style="padding:10px 14px;border:1px solid #1e1e2e;border-radius:8px;width:50%;"><b>🔍 Search & queue</b><br><font color="#8a8a9a">Full library management in terminal</font></td>
+<td style="padding:10px 14px;border:1px solid #1e1e2e;border-radius:8px;width:50%;"><b>📝 Lyrics</b><br><font color="#8a8a9a">LRC timestamps + 3-line traveling window</font></td>
+</tr>
+</table>
+
+---
 
 ## Stack
 
@@ -60,7 +77,9 @@ powershell -ExecutionPolicy Bypass -File installer\install.ps1   # Windows
 Both installers auto-detect what's missing, install it, build the app,
 link it globally, create the config skeleton, and print config paths.
 
-Options:
+---
+
+**Options:**
 
 ```sh
 ./installer/install.sh --dry-run     # show detection, install nothing
@@ -68,13 +87,17 @@ Options:
 ./installer/detect.sh                # check deps without installing
 ```
 
-Manual install: `npm install`, `npm run build`, `npm link`. Requires
+---
+
+**Manual install:** `npm install`, `npm run build`, `npm link`. Requires
 Node.js ≥ 26.4, ffmpeg + ffplay; cava recommended for the live spectrum.
 
 ```sh
 npm run check   # verify node/ffmpeg/ffplay/cava/fifo on any machine
 npm run dev     # run from source
 ```
+
+---
 
 ### Per-platform dependency notes (verified Sep 2026)
 
@@ -94,22 +117,41 @@ re-verifies the version and fails loudly if winget tracks an older one).
 
 ## Screenshots
 
-Real screenshots of MatPlay running in a terminal — no mockups:
+<b>MatPlay in the terminal — real screenshots, no mockups.</b>
 
-| State | Screenshot |
-| --- | --- |
-| Paused | `Shots/paused.png` |
-| Playing (with CAVA visualizer) | `Shots/playing-visualizer.png` |
-| Playing (with lyrics) | `Shots/playing-lyrics.png` |
-| Playing (full visualizer) | `Shots/playing-full.png` |
-| Playing (adaptive green palette) | `Shots/playing-green.png` |
+<table style="width:100%;border-collapse:separate;border-spacing:6px;margin:16px 0;">
+<tr>
+<td style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;" rowspan="2">
+<a href="Screenshots/index.html" target="_blank"><img src="Shots/playing-visualizer.png" alt="MatPlay playing with CAVA visualizer" style="width:100%;display:block;"></a>
+</td>
+<td style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;">
+<a href="Screenshots/index.html" target="_blank"><img src="Shots/playing-lyrics.png" alt="MatPlay lyrics mode" style="width:100%;display:block;"></a>
+</td>
+</tr>
+<tr>
+<td style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;">
+<a href="Screenshots/index.html" target="_blank"><img src="Shots/playing-green.png" alt="MatPlay adaptive palette" style="width:100%;display:block;"></a>
+</td>
+</tr>
+<tr>
+<td style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;">
+<a href="Screenshots/index.html" target="_blank"><img src="Shots/paused.png" alt="MatPlay paused" style="width:100%;display:block;"></a>
+</td>
+<td style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;" colspan="2">
+<a href="Screenshots/index.html" target="_blank"><img src="Shots/playing-full.png" alt="MatPlay full visualizer" style="width:100%;display:block;"></a>
+</td>
+</tr>
+</table>
 
-All screenshots are 1920×1080 captured from the foot terminal.
+<a href="Screenshots/index.html" target="_blank" style="display:inline-block;padding:8px 18px;border:1px solid #2a2a3a;border-radius:8px;text-decoration:none;color:#a0a0b0;font-family:monospace;font-size:13px;">⚡ View interactive gallery →</a>
 
 ## Config
 
-`~/.config/matplay/config.json` (Linux/macOS) or
-`%APPDATA%\matplay\config.json` (Windows). Everything is tunable:
+> `~/.config/matplay/config.json` (Linux/macOS) or
+> `%APPDATA%\matplay\config.json` (Windows). Everything is tunable:
+
+<details>
+<summary><b>config.json</b> — click to expand</summary>
 
 ```json
 {
@@ -122,6 +164,8 @@ All screenshots are 1920×1080 captured from the foot terminal.
 }
 ```
 
+</details>
+
 | Key | Meaning |
 | --- | ------- |
 | `musicRoot` | Main folder: playlist / artist / song / song.mp3 |
@@ -130,12 +174,21 @@ All screenshots are 1920×1080 captured from the foot terminal.
 | `vizMaxHeight` | Fraction of screen height bars may never exceed |
 | `lastPlaylist` / `lastTrackId` | Resume state (no autoplay on startup) |
 
+---
+
 ## Keys
 
-`space` play/pause · `n`/`p` next/previous · `←/→` seek · `/` search ·
-`b` playlists · `Q` queue · `l` lyrics toggle · `s` settings ·
-`?` shortcuts · `1/2/3` shuffle/loop-list/loop-one · `+/-` volume ·
-`m` mute · `q` quit · `ESC` back.
+<details>
+<summary><b>Keyboard reference</b> — click to expand</summary>
+
+`space` play/pause &nbsp;·&nbsp; `n`/`p` next/previous &nbsp;·&nbsp; `←/→` seek &nbsp;·&nbsp; `/` search &nbsp;·&nbsp;
+`b` playlists &nbsp;·&nbsp; `Q` queue &nbsp;·&nbsp; `l` lyrics toggle &nbsp;·&nbsp; `s` settings &nbsp;·&nbsp;
+`?` shortcuts &nbsp;·&nbsp; `1/2/3` shuffle/loop-list/loop-one &nbsp;·&nbsp; `+/-` volume &nbsp;·&nbsp;
+`m` mute &nbsp;·&nbsp; `q` quit &nbsp;·&nbsp; `ESC` back.
+
+</details>
+
+---
 
 ## Layout
 
@@ -177,3 +230,10 @@ installer/            # install.sh (linux/macOS), install.ps1 (windows)
   Windows). It detects your OS, installs missing deps, builds, links,
   and creates `~/.config/matplay/config.json` (or `%APPDATA%\matplay\`)
   with the default music root pre-filled.
+
+---
+
+<sub>Built with [OpenTUI](https://opentui.com/) + React 19. Screenshots
+captured live in foot terminal. Mock-free — everything you see is the
+real app. See <a href="Screenshots/index.html" target="_blank">Screenshots/index.html</a>
+for the interactive gallery.</sub>

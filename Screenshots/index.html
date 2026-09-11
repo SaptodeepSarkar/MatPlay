@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MatPlay — Screenshots</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    color: #e8e8ed;
+    font-family: 'Inter', -apple-system, sans-serif;
+    min-height: 100vh;
+    padding: 48px 32px;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .hero h1 {
+    font-size: 56px;
+    font-weight: 700;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #e8e8ed 0%, #a0a0b0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+  }
+  .hero p {
+    font-size: 17px;
+    color: #6a6a7a;
+    font-weight: 300;
+    max-width: 520px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+  .hero .badge {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 5px 14px;
+    border: 1px solid #2a2a3a;
+    border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #4a4a5a;
+    letter-spacing: 0.5px;
+  }
+
+  /* Bento Grid */
+  .bento {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 220px;
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+
+  .cell {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #12121a;
+    border: 1px solid #1e1e2e;
+    transition: transform 0.2s, border-color 0.3s;
+    cursor: pointer;
+  }
+  .cell:hover {
+    transform: translateY(-2px);
+    border-color: #2a2a3e;
+  }
+
+  .cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .cell .label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 14px 16px;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+    font-size: 13px;
+    font-weight: 500;
+    color: #e8e8ed;
+  }
+  .cell .label .sub {
+    font-size: 10px;
+    color: #6a6a7a;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+    font-weight: 400;
+  }
+
+  /* Grid spans */
+  .s-hero { grid-column: span 2; grid-row: span 2; }
+  .s-wide { grid-column: span 2; }
+  .s-tall { grid-row: span 2; }
+  .s-normal { grid-column: span 1; grid-row: span 1; }
+
+  /* Dark accent for special cells */
+  .cell.accent {
+    background: #0d1a0d;
+    border-color: #1a2e1a;
+  }
+  .cell.amber {
+    background: #1a1408;
+    border-color: #2e2510;
+  }
+
+  /* Info section */
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+  .info-card {
+    padding: 24px;
+    border: 1px solid #1e1e2e;
+    border-radius: 12px;
+    background: #12121a;
+  }
+  .info-card h3 {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #4a4a5a;
+    margin-bottom: 10px;
+  }
+  .info-card p {
+    font-size: 15px;
+    color: #c8c8d0;
+    line-height: 1.5;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 32px 0;
+    border-top: 1px solid #1e1e2e;
+    font-size: 13px;
+    color: #3a3a4a;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .bento { grid-template-columns: repeat(2, 1fr); }
+    .s-hero { grid-column: span 2; grid-row: span 1; }
+    .s-tall { grid-row: span 1; }
+  }
+  @media (max-width: 500px) {
+    .bento { grid-template-columns: 1fr; }
+    .s-hero, .s-wide { grid-column: span 1; }
+    body { padding: 24px 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="hero">
+    <h1>MatPlay</h1>
+    <p>Local-first terminal music player with a cover-art-adaptive TUI. Screenshots captured live in foot.</p>
+    <span class="badge">● 5 SCREENSHOTS  ·  1920×1080  ·  FOOT TERMINAL</span>
+  </div>
+
+  <!-- Bento Grid -->
+  <div class="bento">
+
+    <!-- Hero: playing with full visualizer -->
+    <div class="cell s-hero amber">
+      <img src="../Shots/playing-full.png" alt="MatPlay playing with full CAVA visualizer">
+      <div class="label">
+        Full Spectrum
+        <div class="sub">CAVA · 48 bars · PRIVATE FIFO</div>
+      </div>
+    </div>
+
+    <!-- Playing with lyrics -->
+    <div class="cell s-tall">
+      <img src="../Shots/playing-lyrics.png" alt="MatPlay playing with lyrics panel">
+      <div class="label">
+        Lyrics Mode
+        <div class="sub">LRC · TRAVELING WINDOW</div>
+      </div>
+    </div>
+
+    <!-- Playing with visualizer -->
+    <div class="cell s-normal accent">
+      <img src="../Shots/playing-visualizer.png" alt="MatPlay playing with CAVA visualizer">
+      <div class="label">
+        Visualizer
+        <div class="sub">CAVA · MPG123</div>
+      </div>
+    </div>
+
+    <!-- Green palette -->
+    <div class="cell s-normal accent">
+      <img src="../Shots/playing-green.png" alt="MatPlay with adaptive green palette">
+      <div class="label">
+        Adaptive Palette
+        <div class="sub">COVER-ART DRIVEN</div>
+      </div>
+    </div>
+
+    <!-- Paused -->
+    <div class="cell s-wide">
+      <img src="../Shots/paused.png" alt="MatPlay paused state">
+      <div class="label">
+        Paused
+        <div class="sub">PAUSED · -9.1dB · MP3 128KBPS</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Feature Info Cards -->
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>PLAYBACK</h3>
+      <p>mpg123 (gapless) + ffplay fallback. Pause, seek, shuffle, queue, loop — all in the terminal.</p>
+    </div>
+    <div class="info-card">
+      <h3>VISUALIZER</h3>
+      <p>CAVA spectrum via private FIFO feed. Desktop audio never captured. Procedural fallback.</p>
+    </div>
+    <div class="info-card">
+      <h3>THEMING</h3>
+      <p>Colors adapt to current track's cover art via ffmpeg sampling. Smooth palette fades.</p>
+    </div>
+    <div class="info-card">
+      <h3>LYRICS</h3>
+      <p>LRC timestamp parsing with 3-line traveling window. Plain .txt fallback support.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    MatPlay · Local-first terminal music player · OpenTUI + React 19
+  </div>
+
+</div>
+</body>
+</html>
