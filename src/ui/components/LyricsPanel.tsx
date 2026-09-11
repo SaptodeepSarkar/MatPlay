@@ -8,8 +8,8 @@ export type LyricsPanelProps = {
   theme: StitchTheme;
 };
 
-const WINDOW = 5;
-const LEAD = 2;
+const WINDOW = 3;
+const LEAD = 1;
 
 /**
  * Traveling synced-lyrics window: the highlighted line descends through a

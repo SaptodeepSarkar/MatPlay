@@ -30,13 +30,15 @@ describe('LyricsPanel', () => {
   it('rolls the window as playback crosses timestamps', async () => {
     const early = await frameAt(7000);
     expect(early).toContain('first');
-    expect(early).toContain('fifth');
-    expect(early).not.toContain('seventh');
+    expect(early).toContain('third');
+    expect(early).not.toContain('fourth');
 
     const late = await frameAt(37000);
+    expect(late).toContain('fifth');
     expect(late).toContain('seventh');
     expect(late).not.toContain('first');
     expect(late).not.toContain('second');
+    expect(late).not.toContain('third');
   });
 
   it('shows a placeholder before the first timestamp', async () => {

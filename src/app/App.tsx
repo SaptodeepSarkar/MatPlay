@@ -21,6 +21,7 @@ import { CavaSpectrum } from '../playback/spectrum.js';
 import { SpectrumFeed, spectrumFifoPath } from '../playback/spectrumFeed.js';
 import { scanLibrarySync } from '../library/scanLibrary.js';
 import { searchTracks } from '../library/search.js';
+import { buildPlayOrder, stepIndex } from '../playback/queue.js';
 import { execFileSync } from 'node:child_process';
 import type { AudioBackend } from '../playback/AudioBackend.js';
 import { FfplayBackend } from '../playback/FfplayBackend.js';
@@ -113,6 +114,8 @@ export function App(): React.ReactNode {
   const track: Track | undefined = queue[queueIndex];
   const trackRef = useRef(track);
   trackRef.current = track;
+  const queueIndexRef = useRef(queueIndex);
+  queueIndexRef.current = queueIndex;
 
   const [theme, setTheme] = useState<StitchTheme>(KALYANI_COVER_THEME);
   // Resume paused on the last played song; never autoplay on startup.
@@ -122,6 +125,21 @@ export function App(): React.ReactNode {
   const [shuffle, setShuffle] = useState(false);
   const [loopList, setLoopList] = useState(true);
   const [loopSingle, setLoopSingle] = useState(false);
+
+  // Stable play order: sequential, or shuffled with the current track
+  // pinned first. Regenerated only when the queue or shuffle mode changes,
+  // never while advancing — so the upcoming track is always known ahead.
+  const [orderKey, setOrderKey] = useState(0);
+  useEffect(() => {
+    setOrderKey((key) => key + 1);
+  }, [queue, shuffle]);
+  const order = useMemo(
+    () => buildPlayOrder(queue.length, queueIndexRef.current, shuffle),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [queue.length, shuffle, orderKey],
+  );
+  const orderRef = useRef(order);
+  orderRef.current = order;
   const [menuOpen, setMenuOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -154,6 +172,8 @@ export function App(): React.ReactNode {
   themeRef.current = theme;
   const fadeTimer = useRef<NodeJS.Timeout | undefined>(undefined);
   const paletteCache = useRef(new Map<string, StitchTheme>());
+  const metaCache = useRef(new Map<string, TrackMeta>());
+  const lyricsCache = useRef(new Map<string, LyricLine[]>());
 
   const fadeTo = (target: StitchTheme): void => {
     const from = themeRef.current;
@@ -204,27 +224,36 @@ export function App(): React.ReactNode {
       feed().start(track.audioPath, 0);
       return;
     }
-    if (queueIndex < queue.length - 1) {
-      goToRef.current(queueIndex + 1);
-    } else if (loopList && queue.length > 0) {
-      goToRef.current(0);
-    } else {
+    const target = stepIndex(orderRef.current, queueIndex, 1, loopList);
+    if (target === undefined) {
       setIsPlaying(false);
+    } else {
+      goToRef.current(target);
     }
   };
   const trackEndRef = useRef(handleTrackEnd);
   trackEndRef.current = handleTrackEnd;
 
-  // Load tags/cover/audio/palette/lyrics whenever the queue position changes.
+  // Load tags/cover/audio/palette/lyrics whenever the queue position
+  // changes. The current track stays on screen until the next one is
+  // ready — cached switches apply instantly with no fallback flash.
   useEffect(() => {
     if (!track) return undefined;
     let cancelled = false;
-    setMeta(metaFromFolder(track, FALLBACK_COVER));
-    setLyrics([]);
     updateConfig({ lastTrackId: track.id, lastPlaylist: track.playlist });
+    const cachedMeta = metaCache.current.get(track.id);
+    const cachedLyrics = lyricsCache.current.get(track.id);
+    if (cachedMeta) {
+      setMeta(cachedMeta);
+      presenceRef.current?.updateTrack(track, cachedMeta);
+      const cachedPalette = paletteCache.current.get(cachedMeta.coverSrc);
+      if (cachedPalette) fadeTo(cachedPalette);
+      if (cachedLyrics) setLyrics(cachedLyrics);
+    }
     void (async () => {
-      const enriched = await loadTrackMeta(track, FALLBACK_COVER);
+      const enriched = cachedMeta ?? await loadTrackMeta(track, FALLBACK_COVER);
       if (cancelled) return;
+      metaCache.current.set(track.id, enriched);
       setMeta(enriched);
       presenceRef.current?.updateTrack(track, enriched);
       presenceRef.current?.updatePlaybackStatus(isPlayingRef.current, true);
@@ -237,14 +266,18 @@ export function App(): React.ReactNode {
         paletteCache.current.set(enriched.coverSrc, sampled);
         fadeTo(sampled);
       }
-      if (track.lyricsPath) {
+      let lines = lyricsCache.current.get(track.id);
+      if (!lines && track.lyricsPath) {
         try {
           const content = await readFile(track.lyricsPath, 'utf8');
-          if (!cancelled) setLyrics(parseLyrics(content));
+          lines = parseLyrics(content);
+          lyricsCache.current.set(track.id, lines);
         } catch {
-          if (!cancelled) setLyrics([]);
+          lines = [];
         }
       }
+      if (cancelled) return;
+      setLyrics(lines ?? []);
       const player = backend();
       await player.load(track);
       if (isPlayingRef.current) {
@@ -261,6 +294,36 @@ export function App(): React.ReactNode {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queueIndex, queue]);
+
+  // Lookahead: enrich the upcoming track while the current one plays, so
+  // switching only waits on the audio LOAD, never on tags/art/palette.
+  useEffect(() => {
+    const upcoming = stepIndex(order, queueIndex, 1, loopList);
+    if (upcoming === undefined) return undefined;
+    const target = queue[upcoming];
+    if (!target || metaCache.current.has(target.id)) return undefined;
+    let cancelled = false;
+    void (async () => {
+      const enriched = await loadTrackMeta(target, FALLBACK_COVER);
+      if (cancelled) return;
+      metaCache.current.set(target.id, enriched);
+      const sampled = await sampleCoverTheme(enriched.coverSrc, themeRef.current);
+      if (cancelled) return;
+      paletteCache.current.set(enriched.coverSrc, sampled);
+      if (target.lyricsPath) {
+        try {
+          const content = await readFile(target.lyricsPath, 'utf8');
+          if (!cancelled) lyricsCache.current.set(target.id, parseLyrics(content));
+        } catch {
+          // No lyrics; nothing to cache.
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queueIndex, queue, shuffle, order, loopList]);
 
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -396,25 +459,25 @@ export function App(): React.ReactNode {
   seekToRef.current = seekTo;
 
   const next = (): void => {
-    if (queueIndex < queue.length - 1) {
-      goTo(queueIndex + 1);
-    } else if (loopList) {
-      goTo(0);
-    } else {
+    const target = stepIndex(order, queueIndex, 1, loopList);
+    if (target === undefined) {
       setPositionMs(meta.durationMs ?? 0);
       setIsPlaying(false);
+    } else {
+      goTo(target);
     }
   };
 
   const previous = (): void => {
     if (positionMs > RESTART_THRESHOLD_MS) {
       seekTo(0);
-    } else if (queueIndex > 0) {
-      goTo(queueIndex - 1);
-    } else if (loopList) {
-      goTo(queue.length - 1);
-    } else {
+      return;
+    }
+    const target = stepIndex(order, queueIndex, -1, loopList);
+    if (target === undefined) {
       seekTo(0);
+    } else {
+      goTo(target);
     }
   };
   const nextRef = useRef(next);
