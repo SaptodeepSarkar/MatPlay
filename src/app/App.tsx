@@ -637,7 +637,13 @@ export function App(): React.ReactNode {
 
   const quit = (): void => {
     runShutdown();
-    renderer.destroy();
+    try {
+      renderer.destroy();
+    } finally {
+      // OpenTUI may deliver Ctrl+C as a keyboard event instead of SIGINT.
+      // Force process completion after the renderer and audio children drain.
+      setTimeout(() => process.exit(0), 100);
+    }
   };
 
   useKeyboard((key) => {
@@ -655,6 +661,11 @@ export function App(): React.ReactNode {
     const LEFT = ['left', 'ArrowLeft'];
     const RIGHT = ['right', 'ArrowRight'];
     const CONFIRM = ['return', 'enter'];
+
+    if ((key.ctrl && has('c', 'C')) || key.sequence === '\x03') {
+      quit();
+      return;
+    }
 
     if (setupOpen) {
       if (has(...CONFIRM)) {
