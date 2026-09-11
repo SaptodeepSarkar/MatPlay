@@ -44,11 +44,14 @@ describe('now playing mock', () => {
     await setup.mockInput.pressKey('/');
     await new Promise((resolve) => setTimeout(resolve, 600));
     await setup.renderOnce();
-    await setup.mockInput.typeText('kal');
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    await setup.renderOnce();
+    for (const character of ['k', 'a', 'l']) {
+      await setup.mockInput.typeText(character);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      await setup.renderOnce();
+    }
     const frame = setup.captureCharFrame();
     expect(frame).toContain('1 match');
+    expect(frame).toContain('kal');
     expect(frame).toContain('KALYANI');
     setup.renderer.destroy();
   });

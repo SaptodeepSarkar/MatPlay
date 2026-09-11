@@ -836,6 +836,12 @@ export function App(): React.ReactNode {
         setSearchIndex((index) => Math.max(0, index - 1));
       } else if (has(...DOWN)) {
         setSearchIndex((index) => Math.min(results.length - 1, index + 1));
+      } else if (has('backspace') || key.sequence === '\x7f' || key.sequence === '\b') {
+        setQuery((value) => value.slice(0, -1));
+        setSearchIndex(0);
+      } else if (!key.ctrl && !key.meta && /^[^\x00-\x1f\x7f]+$/.test(key.sequence ?? '')) {
+        setQuery((value) => value + (key.sequence ?? ''));
+        setSearchIndex(0);
       }
       return;
     }
@@ -1079,10 +1085,6 @@ export function App(): React.ReactNode {
             results={results}
             selectedIndex={searchIndex}
             theme={theme}
-            onQuery={(value) => {
-              setQuery(value);
-              setSearchIndex(0);
-            }}
           />
         </box>
       ) : null}
