@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {"darkMode":"class","theme":{"extend":{"colors":{"tertiary-fixed-dim":"#cac6c3","surface-container-lowest":"#ffffff","error-container":"#ffdad6","on-tertiary-container":"#868381","on-background":"#1a1c1b","surface-dim":"#dadad8","on-error-container":"#93000a","inverse-primary":"#c9c6c5","surface-container":"#eeeeec","primary-fixed-dim":"#c9c6c5","primary-container":"#1c1b1b","surface-container-high":"#e8e8e6","surface-variant":"#e2e3e1","tertiary":"#000000","on-primary-container":"#858383","on-primary-fixed-variant":"#474646","on-secondary":"#ffffff","surface-tint":"#5f5e5e","on-secondary-fixed":"#3c0700","on-error":"#ffffff","secondary":"#af2800","tertiary-fixed":"#e6e1df","on-tertiary-fixed":"#1d1b1a","on-primary":"#ffffff","secondary-fixed":"#ffdad2","inverse-surface":"#2f3130","outline-variant":"#c4c7c7","on-surface":"#1a1c1b","secondary-fixed-dim":"#ffb4a2","outline":"#747878","on-tertiary":"#ffffff","tertiary-container":"#1d1b1a","surface-container-low":"#f4f4f2","on-secondary-fixed-variant":"#891d00","on-surface-variant":"#444748","on-tertiary-fixed-variant":"#484645","surface-container-highest":"#e2e3e1","inverse-on-surface":"#f1f1ef","background":"#f9f9f7","primary":"#000000","error":"#ba1a1a","on-secondary-container":"#fffbff","on-primary-fixed":"#1c1b1b","secondary-container":"#db3400","surface":"#f9f9f7","surface-bright":"#f9f9f7","primary-fixed":"#e5e2e1"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"space-md":"0.75rem","space-lg":"1.25rem","space-sm":"0.5rem","gutter":"1rem","space-xs":"0.25rem","margin-mobile":"1rem","gutter-sm":"0.5rem","space-xl":"2rem","margin":"1.5rem"},"fontFamily":{"label-mono-sm":["JetBrains Mono"],"body-lg":["Geist"],"label-code":["JetBrains Mono"],"body-sm":["Geist"],"headline-xl":["Space Grotesk"],"label-mono-caps":["JetBrains Mono"],"headline-sm":["Space Grotesk"],"headline-lg":["Space Grotesk"],"headline-xl-mobile":["Space Grotesk"],"body-md":["Geist"]},"fontSize":{"label-mono-sm":["10px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"500"}],"body-lg":["15px",{"lineHeight":"22px","letterSpacing":"-0.01em","fontWeight":"400"}],"label-code":["12px",{"lineHeight":"16px","letterSpacing":"-0.01em","fontWeight":"500"}],"body-sm":["11px",{"lineHeight":"16px","fontWeight":"400"}],"headline-xl":["40px",{"lineHeight":"44px","letterSpacing":"-0.04em","fontWeight":"600"}],"label-mono-caps":["9px",{"lineHeight":"12px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-sm":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"500"}],"headline-lg":["24px",{"lineHeight":"28px","letterSpacing":"-0.02em","fontWeight":"600"}],"headline-xl-mobile":["28px",{"lineHeight":"32px","letterSpacing":"-0.03em","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}]}}}};</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 right-0 z-40 bg-surface/90 backdrop-blur-md"><div class="h-14 w-full px-margin flex items-center justify-between"><div class="flex items-center gap-space-lg"><button aria-label="Open Terminal Settings" class="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center hover:bg-surface-container-highest hover:text-on-surface transition-colors cursor-pointer" id="terminal-menu-trigger"><span class="material-symbols-outlined text-[16px]">more_vert</span></button><div class="flex items-center gap-space-xs"><span class="font-label-mono-caps text-label-mono-caps text-secondary uppercase">DAEMON //</span><span class="font-label-mono-sm text-label-mono-sm text-on-surface tracking-wider font-semibold">AMP-01_SYS</span></div></div><nav class="hidden sm:flex items-center gap-space-xs" data-active-classes="bg-primary text-on-primary"><a aria-current="page" class="px-space-md py-space-xs font-label-mono-sm transition-colors bg-primary text-on-primary" data-path="player" href="#">PLAYER</a><a class="px-space-md py-space-xs font-label-mono-sm text-label-mono-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="library" href="#">LIBRARY</a><a class="px-space-md py-space-xs font-label-mono-sm text-label-mono-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="queue" href="#">QUEUE</a><a class="px-space-md py-space-xs font-label-mono-sm text-label-mono-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="spectrum" href="#">OSC_DSP</a></nav><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-space-xs text-on-surface-variant font-label-mono-caps text-label-mono-caps"><span class="w-2 h-2 rounded-full bg-secondary inline-block animate-pulse"></span><span>44.1kHz / 24-BIT</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><div class="fixed inset-y-0 left-0 w-80 max-w-full bg-inverse-surface text-inverse-on-surface z-50 transform -translate-x-full transition-transform duration-200 ease-in-out p-space-lg flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]" id="terminal-drawer"><div class="flex flex-col gap-space-md"><div class="flex items-center justify-between pb-space-sm"><span class="font-label-mono-caps text-label-mono-caps text-tertiary-fixed-dim uppercase">[CONFIG_TERMINAL_DAEMON]</span><button class="w-6 h-6 flex items-center justify-center text-inverse-on-surface hover:text-secondary-fixed transition-colors" id="terminal-menu-close"><span class="material-symbols-outlined text-[18px]">close</span></button></div><div class="flex flex-col gap-space-xs pt-space-sm"><span class="font-label-mono-caps text-label-mono-caps text-outline-variant">$ /DIR/LOC_PATH</span><div class="bg-surface-container-highest/10 px-space-md py-space-xs font-label-code text-label-code text-inverse-on-surface">/mnt/audio/flac_master/</div></div><div class="flex flex-col gap-space-sm pt-space-md"><div class="flex items-center justify-between"><span class="font-label-mono-sm text-label-mono-sm text-inverse-on-surface">[1] SHUFFLE</span><span class="font-label-code text-label-code text-secondary-fixed font-semibold">DISENGAGED</span></div><div class="flex items-center justify-between"><span class="font-label-mono-sm text-label-mono-sm text-inverse-on-surface">[2] LOOP_LIST</span><span class="font-label-code text-label-code text-secondary-fixed font-semibold">ACTIVE</span></div><div class="flex items-center justify-between"><span class="font-label-mono-sm text-label-mono-sm text-inverse-on-surface">[3] LOOP_SINGLE</span><span class="font-label-code text-label-code text-tertiary-fixed-dim font-semibold">DISABLED</span></div><div class="flex items-center justify-between"><span class="font-label-mono-sm text-label-mono-sm text-inverse-on-surface">[4] AUDIO_OUT</span><span class="font-label-code text-label-code text-inverse-on-surface">CORE_ALSA_0</span></div><div class="flex items-center justify-between"><span class="font-label-mono-sm text-label-mono-sm text-inverse-on-surface">[5] THEME_PROFILE</span><span class="font-label-code text-label-code text-inverse-on-surface">LIGHT_MONO</span></div></div></div><div class="flex flex-col gap-space-xs pt-space-md"><div class="font-label-mono-caps text-label-mono-caps text-tertiary-fixed-dim">[KEYBINDINGS_MAP]</div><div class="grid grid-cols-2 gap-space-xs font-label-mono-sm text-label-mono-sm text-tertiary-fixed-dim"><span>SPC : PLAY/PAUSE</span><span>J/K : NEXT/PREV</span><span>M : MUTE AUDIO</span><span>? : HELP_DOC</span></div></div></div><main class="w-full pt-14 bg-surface min-h-[calc(100vh-3.5rem)]"><div class="flex flex-col w-full">
+<div class="relative w-full min-h-[calc(100vh-3.5rem)] bg-surface-container-lowest flex flex-col justify-between p-space-md sm:p-space-xl selection:bg-primary selection:text-on-primary">
+<div class="relative z-30 flex items-center justify-between w-full">
+<div class="relative">
+<button aria-expanded="false" aria-label="Configuration Settings" class="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center transition-all duration-150 active:scale-95 shadow-sm hover:opacity-90 cursor-pointer" id="tactile-menu-btn">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+</button>
+<div class="hidden absolute top-12 left-0 w-80 sm:w-96 bg-inverse-surface text-inverse-on-surface p-space-md shadow-xl z-50 flex-col gap-space-sm font-label-mono-sm text-label-mono-sm select-none" id="tactile-menu-dropdown">
+<div class="flex items-center justify-between pb-space-xs border-b border-inverse-on-surface/10 text-tertiary-fixed-dim font-label-mono-caps text-label-mono-caps">
+<span>[AMP-01_SYS // CONFIG_TERMINAL]</span>
+<span class="text-secondary-fixed">LIVE</span>
+</div>
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<span class="text-outline-variant font-label-mono-caps text-label-mono-caps">$ MUSIC DIRECTORY</span>
+<div class="bg-surface-container-highest/10 px-space-sm py-space-xs font-label-code text-label-code text-inverse-on-surface flex items-center justify-between">
+<span>~/Music/FLAC/</span>
+<span class="text-tertiary-fixed-dim text-[10px]">SCAN: 842 FILES</span>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs pt-space-xs border-t border-inverse-on-surface/10">
+<span class="text-outline-variant font-label-mono-caps text-label-mono-caps">PLAYBACK CONFIGURATION</span>
+<button class="w-full flex items-center justify-between px-space-sm py-space-xs hover:bg-surface-container-highest/15 transition-colors text-left cursor-pointer" id="opt-shuffle">
+<span>[1] SHUFFLE</span>
+<span class="font-label-code text-label-code text-tertiary-fixed-dim font-semibold" id="opt-shuffle-val">OFF</span>
+</button>
+<button class="w-full flex items-center justify-between px-space-sm py-space-xs hover:bg-surface-container-highest/15 transition-colors text-left cursor-pointer" id="opt-loop-list">
+<span>[2] LOOP PLAYLIST</span>
+<span class="font-label-code text-label-code text-secondary-fixed font-semibold" id="opt-loop-list-val">ON</span>
+</button>
+<button class="w-full flex items-center justify-between px-space-sm py-space-xs hover:bg-surface-container-highest/15 transition-colors text-left cursor-pointer" id="opt-loop-single">
+<span>[3] LOOP SONG</span>
+<span class="font-label-code text-label-code text-tertiary-fixed-dim font-semibold" id="opt-loop-single-val">OFF</span>
+</button>
+</div>
+<div class="flex flex-col gap-space-xs pt-space-xs border-t border-inverse-on-surface/10">
+<span class="text-outline-variant font-label-mono-caps text-label-mono-caps">THEME PRESET</span>
+<div class="grid grid-cols-3 gap-space-xs">
+<button class="bg-inverse-on-surface text-inverse-surface text-center py-space-xs font-label-mono-caps text-label-mono-caps font-semibold">LIGHT</button>
+<button class="bg-surface-container-highest/15 hover:bg-surface-container-highest/30 text-center py-space-xs font-label-mono-caps text-label-mono-caps transition-colors">CONTRAST</button>
+<button class="bg-surface-container-highest/15 hover:bg-surface-container-highest/30 text-center py-space-xs font-label-mono-caps text-label-mono-caps transition-colors">OLED</button>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs pt-space-xs border-t border-inverse-on-surface/10">
+<span class="text-outline-variant font-label-mono-caps text-label-mono-caps">AUDIO ENGINE / DEVICE</span>
+<div class="flex items-center justify-between bg-surface-container-highest/10 px-space-sm py-space-xs font-label-code text-label-code">
+<span class="truncate">CoreAudio - ALSA Bit-Perfect</span>
+<span class="w-2 h-2 rounded-full bg-secondary-fixed shrink-0"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="hidden sm:flex items-center gap-space-md font-label-mono-caps text-label-mono-caps text-on-surface-variant tracking-wider">
+<span>TE-01 SPEC</span>
+<span>•</span>
+<span>OUTPUT BUFFER 0.04MS</span>
+</div>
+</div>
+<div class="my-auto w-full flex items-center justify-center py-space-xl">
+<div class="flex flex-col md:flex-row items-center gap-space-xl lg:gap-14 max-w-4xl w-full">
+<div class="relative shrink-0 w-[260px] sm:w-[280px] h-[260px] sm:h-[280px] bg-surface-container-low shadow-sm overflow-hidden group">
+<img alt="Void Structure - Geometries of Light album art" class="w-full h-full object-cover grayscale contrast-125 select-none" loading="eager" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFwHco0V3oVPWTP4FuHOy9cfEfhe87_8Wyajd4QbolTjzXvTOit4m1QZsjWqhbQVaKFdYX9a8YinX92OIIDpHqIJzUzOT6jvage6QcgIXw-qVvcS1Qxqej-XGOPk9N4-BPLghHJka417ExcD5ni1R-yjIo2SuXtDOxlWsVwqEA0qasYnceL2fDYzt_Y-ZxwqUI3lHLlPGBtvaNO6bhhU17wflaSnlFdeGetV9lwUEvNKrpGBNJfu2Wrg"/>
+<div class="absolute inset-0 bg-primary/5 pointer-events-none mix-blend-overlay"></div>
+<div class="absolute bottom-2 right-2 bg-inverse-surface/80 text-inverse-on-surface font-label-mono-caps text-label-mono-caps px-1 py-0.5 pointer-events-none">
+            LP_01
+          </div>
+</div>
+<div class="flex flex-col w-full min-w-0 justify-center">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-space-xs font-label-mono-caps text-label-mono-caps text-secondary font-semibold uppercase tracking-widest">
+<span>SYS // TRACK 04</span>
+<span>•</span>
+<span>DIRECT STREAM</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg sm:font-headline-xl sm:text-headline-xl text-on-surface uppercase tracking-tight truncate">
+              GEOMETRIES OF LIGHT
+            </h1>
+<div class="flex flex-wrap items-center gap-x-space-md gap-y-1 pt-0.5 text-on-surface-variant font-label-code text-label-code">
+<span class="text-on-surface font-semibold">VOID STRUCTURE</span>
+<span class="text-outline-variant">/</span>
+<span class="text-on-surface-variant">FLAC 24-bit / 96.0 kHz</span>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs mt-8 w-full">
+<div class="relative w-full h-5 flex items-center cursor-pointer group select-none" id="progress-track">
+<div class="w-full h-[2px] bg-surface-container-highest relative">
+<div class="h-full bg-primary" id="progress-fill" style="width: 38.5%;"></div>
+<div class="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-secondary group-hover:scale-125 transition-transform cursor-ew-resize" id="progress-marker" style="left: calc(38.5% - 5px);"></div>
+</div>
+</div>
+<div class="flex items-center justify-between font-label-mono-sm text-label-mono-sm text-on-surface-variant">
+<span class="text-on-surface font-semibold tracking-wider" id="time-current">02:14.08</span>
+<span class="tracking-wider" id="time-total">05:48.00</span>
+</div>
+</div>
+<div class="flex flex-wrap items-center justify-between gap-space-md mt-6 pt-4 border-t border-surface-container-high">
+<div class="flex items-center gap-space-xs sm:gap-space-sm">
+<button aria-label="Shuffle" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" id="btn-shuffle">
+<span class="material-symbols-outlined text-[18px]">shuffle</span>
+</button>
+<button aria-label="Previous Track" class="w-8 h-8 flex items-center justify-center text-on-surface hover:text-secondary transition-colors cursor-pointer" id="btn-prev">
+<span class="material-symbols-outlined text-[20px]">skip_previous</span>
+</button>
+<button aria-label="Play or Pause" class="h-9 px-space-md bg-primary text-on-primary flex items-center justify-center gap-1.5 hover:bg-surface-container-highest hover:text-on-surface transition-colors cursor-pointer font-label-mono-caps text-label-mono-caps" id="btn-play-pause">
+<span class="material-symbols-outlined text-[18px]" id="play-icon">pause</span>
+<span id="play-status">PLAYING</span>
+</button>
+<button aria-label="Next Track" class="w-8 h-8 flex items-center justify-center text-on-surface hover:text-secondary transition-colors cursor-pointer" id="btn-next">
+<span class="material-symbols-outlined text-[20px]">skip_next</span>
+</button>
+<button aria-label="Loop Playlist" class="w-8 h-8 flex items-center justify-center text-primary font-semibold transition-colors cursor-pointer" id="btn-loop-list" title="Loop Playlist: ON">
+<span class="material-symbols-outlined text-[18px]">repeat</span>
+</button>
+<button aria-label="Repeat One Track" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" id="btn-loop-single" title="Repeat Single Track: OFF">
+<span class="material-symbols-outlined text-[18px]">repeat_one</span>
+</button>
+</div>
+<div class="flex items-center gap-space-xs font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">volume_up</span>
+<div class="flex items-center gap-[2px] h-4 px-1 cursor-pointer select-none" id="volume-meter" title="Master Output Gain: 82%">
+<div class="w-1 h-2 bg-primary"></div>
+<div class="w-1 h-2.5 bg-primary"></div>
+<div class="w-1 h-3 bg-primary"></div>
+<div class="w-1 h-3.5 bg-primary"></div>
+<div class="w-1 h-4 bg-primary"></div>
+<div class="w-1 h-4.5 bg-primary"></div>
+<div class="w-1 h-5 bg-surface-container-highest"></div>
+<div class="w-1 h-5 bg-surface-container-highest"></div>
+</div>
+<span class="text-on-surface font-semibold text-[10px] pl-1">-4.2dB</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between w-full pt-space-sm font-label-mono-caps text-label-mono-caps text-on-surface-variant select-none">
+<div class="flex items-center gap-space-sm">
+<span class="w-1.5 h-1.5 bg-secondary rounded-full inline-block animate-pulse"></span>
+<span>DAEMON_ID: 0x2A99 // CLOCK SYNCHRONIZED</span>
+</div>
+<div class="hidden sm:block">
+<span>HOLD [SPC] PAUSE • [J/K] SKIP</span>
+</div>
+</div>
+</div>
+<script>
+    (function() {
+      const menuBtn = document.getElementById('tactile-menu-btn');
+      const dropdown = document.getElementById('tactile-menu-dropdown');
+      const optShuffle = document.getElementById('opt-shuffle');
+      const optShuffleVal = document.getElementById('opt-shuffle-val');
+      const optLoopList = document.getElementById('opt-loop-list');
+      const optLoopListVal = document.getElementById('opt-loop-list-val');
+      const optLoopSingle = document.getElementById('opt-loop-single');
+      const optLoopSingleVal = document.getElementById('opt-loop-single-val');
+
+      const btnPlayPause = document.getElementById('btn-play-pause');
+      const playIcon = document.getElementById('play-icon');
+      const playStatus = document.getElementById('play-status');
+      const btnShuffle = document.getElementById('btn-shuffle');
+      const btnLoopList = document.getElementById('btn-loop-list');
+      const btnLoopSingle = document.getElementById('btn-loop-single');
+      const progressTrack = document.getElementById('progress-track');
+      const progressFill = document.getElementById('progress-fill');
+      const progressMarker = document.getElementById('progress-marker');
+      const timeCurrent = document.getElementById('time-current');
+
+      let isPlaying = true;
+      let shuffleActive = false;
+      let loopListActive = true;
+      let loopSingleActive = false;
+      let progress = 0.385;
+      const totalSeconds = 348; // 05:48
+
+      if (menuBtn && dropdown) {
+        menuBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isClosed = dropdown.classList.contains('hidden');
+          dropdown.classList.toggle('hidden');
+          menuBtn.setAttribute('aria-expanded', isClosed ? 'true' : 'false');
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!dropdown.contains(e.target) && !menuBtn.contains(e.target)) {
+            dropdown.classList.add('hidden');
+            menuBtn.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+
+      function updateShuffleUI() {
+        if (optShuffleVal) {
+          optShuffleVal.textContent = shuffleActive ? 'ON' : 'OFF';
+          optShuffleVal.className = shuffleActive 
+            ? 'font-label-code text-label-code text-secondary-fixed font-semibold' 
+            : 'font-label-code text-label-code text-tertiary-fixed-dim font-semibold';
+        }
+        if (btnShuffle) {
+          btnShuffle.className = shuffleActive
+            ? 'w-8 h-8 flex items-center justify-center text-secondary font-semibold transition-colors cursor-pointer'
+            : 'w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer';
+        }
+      }
+
+      function updateLoopListUI() {
+        if (optLoopListVal) {
+          optLoopListVal.textContent = loopListActive ? 'ON' : 'OFF';
+          optLoopListVal.className = loopListActive 
+            ? 'font-label-code text-label-code text-secondary-fixed font-semibold' 
+            : 'font-label-code text-label-code text-tertiary-fixed-dim font-semibold';
+        }
+        if (btnLoopList) {
+          btnLoopList.className = loopListActive
+            ? 'w-8 h-8 flex items-center justify-center text-primary font-semibold transition-colors cursor-pointer'
+            : 'w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer';
+        }
+      }
+
+      function updateLoopSingleUI() {
+        if (optLoopSingleVal) {
+          optLoopSingleVal.textContent = loopSingleActive ? 'ON' : 'OFF';
+          optLoopSingleVal.className = loopSingleActive 
+            ? 'font-label-code text-label-code text-secondary-fixed font-semibold' 
+            : 'font-label-code text-label-code text-tertiary-fixed-dim font-semibold';
+        }
+        if (btnLoopSingle) {
+          btnLoopSingle.className = loopSingleActive
+            ? 'w-8 h-8 flex items-center justify-center text-secondary font-semibold transition-colors cursor-pointer'
+            : 'w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer';
+        }
+      }
+
+      if (optShuffle) optShuffle.addEventListener('click', () => { shuffleActive = !shuffleActive; updateShuffleUI(); });
+      if (btnShuffle) btnShuffle.addEventListener('click', () => { shuffleActive = !shuffleActive; updateShuffleUI(); });
+
+      if (optLoopList) optLoopList.addEventListener('click', () => { loopListActive = !loopListActive; updateLoopListUI(); });
+      if (btnLoopList) btnLoopList.addEventListener('click', () => { loopListActive = !loopListActive; updateLoopListUI(); });
+
+      if (optLoopSingle) optLoopSingle.addEventListener('click', () => { loopSingleActive = !loopSingleActive; updateLoopSingleUI(); });
+      if (btnLoopSingle) btnLoopSingle.addEventListener('click', () => { loopSingleActive = !loopSingleActive; updateLoopSingleUI(); });
+
+      if (btnPlayPause) {
+        btnPlayPause.addEventListener('click', () => {
+          isPlaying = !isPlaying;
+          if (playIcon) playIcon.textContent = isPlaying ? 'pause' : 'play_arrow';
+          if (playStatus) playStatus.textContent = isPlaying ? 'PLAYING' : 'PAUSED';
+        });
+      }
+
+      function formatTime(secs) {
+        const m = Math.floor(secs / 60);
+        const s = Math.floor(secs % 60);
+        const ms = Math.floor((secs % 1) * 100);
+        return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s + '.' + (ms < 10 ? '0' : '') + ms;
+      }
+
+      if (progressTrack) {
+        progressTrack.addEventListener('click', (e) => {
+          const rect = progressTrack.getBoundingClientRect();
+          const clickX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+          progress = clickX / rect.width;
+          const percent = (progress * 100).toFixed(2) + '%';
+          if (progressFill) progressFill.style.width = percent;
+          if (progressMarker) progressMarker.style.left = 'calc(' + percent + ' - 5px)';
+          if (timeCurrent) timeCurrent.textContent = formatTime(progress * totalSeconds);
+        });
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.code === 'Space') {
+          e.preventDefault();
+          if (btnPlayPause) btnPlayPause.click();
+        }
+      });
+    })();
+  </script>
+</div></main><footer class="w-full bg-surface py-space-md"><div class="w-full px-margin flex flex-col sm:flex-row items-center justify-between gap-space-sm font-label-mono-caps text-label-mono-caps text-on-surface-variant"><span>DAEMON STATUS: SYNCHRONIZED [BUFFER 0.04MS]</span><span>PRECISION AUDIO ENGINE • INDUSTRIAL SPEC TE-01</span></div></footer><script>const trigger=document.getElementById('terminal-menu-trigger');const drawer=document.getElementById('terminal-drawer');const close=document.getElementById('terminal-menu-close');if(trigger&&drawer&&close){trigger.addEventListener('click',()=>drawer.classList.toggle('-translate-x-full'));close.addEventListener('click',()=>drawer.classList.add('-translate-x-full'));}</script></body></html>
