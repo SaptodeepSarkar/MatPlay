@@ -8,7 +8,8 @@ const ICONS = {
   play: '\uf04b',
   pause: '\uf04c',
   next: '\uf051',
-  repeat: '\uf2f9',
+  repeatOnce: '\u{F0458}',
+  repeat: '\u{F0456}',
 };
 
 export type PlaybackControlsProps = {
@@ -84,7 +85,7 @@ export function PlaybackControls({
         </text>
       </box>
       <IconButton glyph={ICONS.next} active={false} activeFg={theme.text} theme={theme} onActivate={onNext} />
-      <IconButton glyph={`${ICONS.repeat}1`} active={loopSingle} activeFg={theme.signal} theme={theme} onActivate={onToggleLoopSingle} />
+      <IconButton glyph={ICONS.repeatOnce} active={loopSingle} activeFg={theme.signal} theme={theme} onActivate={onToggleLoopSingle} />
       <IconButton glyph={ICONS.repeat} active={loopList} activeFg={theme.text} theme={theme} onActivate={onToggleLoopList} />
     </box>
   );
