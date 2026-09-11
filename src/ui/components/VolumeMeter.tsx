@@ -13,7 +13,7 @@ export function VolumeMeter({ volume, theme }: VolumeMeterProps): React.ReactNod
   const db = volume <= 0 ? '-∞' : `${(20 * Math.log10(volume)).toFixed(1)}dB`;
 
   return (
-    <box flexDirection="row" gap={1} alignItems="center">
+    <box flexDirection="row" gap={1} alignItems="center" backgroundColor="transparent">
       <text>
         {BARS.map((glyph, index) => (
           <span
@@ -24,7 +24,7 @@ export function VolumeMeter({ volume, theme }: VolumeMeterProps): React.ReactNod
           </span>
         ))}
       </text>
-      <text fg={theme.text}>
+      <text fg={theme.accent}>
         <strong>{db}</strong>
       </text>
     </box>

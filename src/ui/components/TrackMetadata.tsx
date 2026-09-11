@@ -16,7 +16,7 @@ export function TrackMetadata({
   theme,
 }: TrackMetadataProps): React.ReactNode {
   return (
-    <box flexDirection="column" gap={1}>
+    <box flexDirection="column" gap={1} backgroundColor="transparent">
       <text fg={theme.accent}>
         <strong>
           SYS // TRACK {String(trackNo).padStart(2, '0')} • DIRECT STREAM

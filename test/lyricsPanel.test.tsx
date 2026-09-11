@@ -10,6 +10,9 @@ const LINES: LyricLine[] = [
   { timeMs: 12000, text: 'second' },
   { timeMs: 18000, text: 'third' },
   { timeMs: 24000, text: 'fourth' },
+  { timeMs: 30000, text: 'fifth' },
+  { timeMs: 36000, text: 'sixth' },
+  { timeMs: 42000, text: 'seventh' },
 ];
 
 async function frameAt(positionMs: number): Promise<string> {
@@ -27,14 +30,13 @@ describe('LyricsPanel', () => {
   it('rolls the window as playback crosses timestamps', async () => {
     const early = await frameAt(7000);
     expect(early).toContain('first');
-    expect(early).toContain('second');
-    expect(early).not.toContain('fourth');
+    expect(early).toContain('fifth');
+    expect(early).not.toContain('seventh');
 
-    const late = await frameAt(19000);
-    expect(late).toContain('second');
-    expect(late).toContain('third');
-    expect(late).toContain('fourth');
+    const late = await frameAt(37000);
+    expect(late).toContain('seventh');
     expect(late).not.toContain('first');
+    expect(late).not.toContain('second');
   });
 
   it('shows a placeholder before the first timestamp', async () => {

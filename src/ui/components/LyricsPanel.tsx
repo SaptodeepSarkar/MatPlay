@@ -8,11 +8,13 @@ export type LyricsPanelProps = {
   theme: StitchTheme;
 };
 
+const WINDOW = 5;
+const LEAD = 2;
+
 /**
- * Rolling synced-lyrics window: previous line dim, current line
- * highlighted, next line dim. When playback crosses a timestamp the
- * window rolls up and the bottom line takes focus — the ascending morph.
- * Untimed (plain `.txt`) lyrics render as a static block instead.
+ * Traveling synced-lyrics window: the highlighted line descends through a
+ * five-line viewport as the song plays, and the list rolls once it passes
+ * center. Untimed (plain `.txt`) lyrics render as a static block instead.
  */
 export function LyricsPanel({
   lines,
@@ -26,8 +28,8 @@ export function LyricsPanel({
   const timed = lines.filter((line) => line.timeMs !== undefined);
   if (timed.length === 0) {
     return (
-      <box flexDirection="column">
-        {lines.slice(0, 3).map((line, index) => (
+      <box flexDirection="column" backgroundColor="transparent">
+        {lines.slice(0, WINDOW).map((line, index) => (
           // eslint-disable-next-line react/no-array-index-key
           <text key={index} fg={theme.muted}>
             {line.text}
@@ -38,21 +40,26 @@ export function LyricsPanel({
   }
 
   const active = lyricIndexAt(timed, positionMs);
-  const current = active >= 0 ? timed[active] : undefined;
-  const previous = active > 0 ? timed[active - 1] : undefined;
-  const next = timed[active + 1];
+  const start = Math.max(
+    0,
+    Math.min(Math.max(0, active - LEAD), Math.max(0, timed.length - WINDOW)),
+  );
+  const visible = timed.slice(start, start + WINDOW);
 
   return (
-    <box flexDirection="column">
-      {previous ? <text fg={theme.muted}>  {previous.text}</text> : null}
-      {current ? (
-        <text fg={theme.accent}>
-          <strong>{`▸ ${current.text}`}</strong>
-        </text>
-      ) : (
-        <text fg={theme.muted}>  …</text>
-      )}
-      {next ? <text fg={theme.muted}>  {next.text}</text> : null}
+    <box flexDirection="column" backgroundColor="transparent">
+      {visible.map((line, offset) => {
+        const globalIndex = start + offset;
+        const isActive = globalIndex === active;
+        return (
+          <text
+            key={`${line.timeMs}-${offset}`}
+            fg={isActive ? theme.accent : theme.muted}
+          >
+            {isActive ? <strong>{`▸ ${line.text}`}</strong> : `  ${line.text}`}
+          </text>
+        );
+      })}
     </box>
   );
 }

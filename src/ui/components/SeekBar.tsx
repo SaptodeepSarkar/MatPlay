@@ -16,8 +16,8 @@ export function formatTime(ms: number): string {
 }
 
 /**
- * Hairline rail with a square head, after the Stitch scrubber:
- * 2px rail, solid fill, orange square marker, mono timecodes.
+ * Hairline rail with a square head, after the Stitch scrubber.
+ * Transparent container: the visualizer stays visible around the rail.
  */
 export function SeekBar({
   positionMs,
@@ -40,14 +40,14 @@ export function SeekBar({
   );
 
   return (
-    <box flexDirection="column">
+    <box flexDirection="column" backgroundColor="transparent">
       <text>
         <span fg={theme.accent}>{fill}</span>
         <span fg={theme.signal}>■</span>
         <span fg={theme.cardAlt}>{empty}</span>
       </text>
       <text>
-        <span fg={theme.text}>
+        <span fg={theme.accent}>
           <strong>{current}</strong>
         </span>
         <span>{gap}</span>

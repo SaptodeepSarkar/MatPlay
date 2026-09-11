@@ -1,3 +1,4 @@
+import { hexToRgb, rgbToHex, type RGB } from '../palette.js';
 import type { StitchTheme } from '../stitchTheme.js';
 
 export type VisualizerProps = {
@@ -33,8 +34,18 @@ export function Visualizer({
       const filled = fromBottom < Math.round(level * barRows);
       const capped =
         !filled && fromBottom <= Math.round(peak * barRows) && peak > 0.02;
+      // Brightness ramp: dim base swelling to glowing tips, so the field
+      // stays readable behind the UI instead of shouting at full blast.
+      const ramp = Math.pow(Math.min(1, Math.max(0, level)), 1.4);
+      const low = hexToRgb(theme.cardAlt);
+      const high = hexToRgb(theme.accent);
+      const body: RGB = [
+        low[0] + (high[0] - low[0]) * ramp,
+        low[1] + (high[1] - low[1]) * ramp,
+        low[2] + (high[2] - low[2]) * ramp,
+      ];
       cells.push(
-        <span key={i} fg={capped ? theme.accent : filled ? theme.cardAlt : theme.appBg}>
+        <span key={i} fg={capped ? theme.signal : filled ? rgbToHex(body) : theme.appBg}>
           {capped || filled ? '█' : ' '}
         </span>,
       );

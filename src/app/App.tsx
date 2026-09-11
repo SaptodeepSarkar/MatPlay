@@ -21,7 +21,10 @@ import { CavaSpectrum } from '../playback/spectrum.js';
 import { SpectrumFeed, spectrumFifoPath } from '../playback/spectrumFeed.js';
 import { scanLibrarySync } from '../library/scanLibrary.js';
 import { searchTracks } from '../library/search.js';
+import { execFileSync } from 'node:child_process';
+import type { AudioBackend } from '../playback/AudioBackend.js';
 import { FfplayBackend } from '../playback/FfplayBackend.js';
+import { Mpg123Backend } from '../playback/Mpg123Backend.js';
 import { loadTrackMeta, metaFromFolder, type TrackMeta } from '../playback/trackMeta.js';
 import { loadConfig, saveConfig, type AppConfig } from './config.js';
 import { parseLyrics } from '../lyrics/parseLyrics.js';
@@ -37,6 +40,22 @@ const FADE_INTERVAL_MS = 55;
 const FALLBACK_COVER = fileURLToPath(
   new URL('../../stitch/kalyani-cover.jpg', import.meta.url),
 );
+
+type PlayerBackend = AudioBackend & { onEnded: (() => void) | undefined };
+
+let preferMpg123: boolean | undefined;
+/** mpg123 remote control (gapless) when present, ffplay otherwise. */
+function detectBackend(): 'mpg123' | 'ffplay' {
+  if (preferMpg123 === undefined) {
+    try {
+      execFileSync('mpg123', ['--version'], { stdio: 'ignore' });
+      preferMpg123 = true;
+    } catch {
+      preferMpg123 = false;
+    }
+  }
+  return preferMpg123 ? 'mpg123' : 'ffplay';
+}
 
 export function App(): React.ReactNode {
   const renderer = useRenderer();
@@ -148,10 +167,11 @@ export function App(): React.ReactNode {
     }, FADE_INTERVAL_MS);
   };
 
-  const backendRef = useRef<FfplayBackend | undefined>(undefined);
-  const backend = (): FfplayBackend => {
+  const backendRef = useRef<PlayerBackend | undefined>(undefined);
+  const backend = (): PlayerBackend => {
     if (!backendRef.current) {
-      const instance = new FfplayBackend();
+      const instance: PlayerBackend =
+        detectBackend() === 'mpg123' ? new Mpg123Backend() : new FfplayBackend();
       instance.onEnded = () => {
         trackEndRef.current();
       };
@@ -275,19 +295,22 @@ export function App(): React.ReactNode {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Position clock + natural track end.
+  // Position clock from the decoder itself (gapless backends report live
+  // values; timer adapters estimate). Natural track end advances.
   useEffect(() => {
     if (!isPlaying || !track) return undefined;
     const timer = setInterval(() => {
-      setPositionMs((previous) => {
-        const duration = metaRef.current.durationMs;
-        const next = previous + 250;
-        if (duration !== undefined && next >= duration) {
+      void (async () => {
+        const player = backend();
+        const position = await player.getPosition();
+        const duration = (await player.getDuration()) ?? metaRef.current.durationMs;
+        if (duration !== undefined && position >= duration) {
           trackEndRef.current();
-          return 0;
+          setPositionMs(0);
+        } else {
+          setPositionMs(position);
         }
-        return next;
-      });
+      })();
     }, 250);
     return () => {
       clearInterval(timer);
@@ -544,19 +567,10 @@ export function App(): React.ReactNode {
         />
       </box>
 
-      <box flexDirection="row" alignItems="center" paddingX={2} paddingTop={1}>
-        <box
-          width={7}
-          height={3}
-          borderStyle="rounded"
-          borderColor={theme.complement}
-          justifyContent="center"
-          alignItems="center"
-        >
-          <text fg={theme.complement}>
-            <strong>⚙</strong>
-          </text>
-        </box>
+      <box flexDirection="row" alignItems="center" paddingX={2} paddingTop={1} backgroundColor="transparent">
+        <text fg={theme.accent}>
+          <strong>{'  ⚙  '}</strong>
+        </text>
         <box flexGrow={1} />
         <text fg={theme.muted}>{meta.streamLabel}</text>
       </box>
@@ -584,7 +598,7 @@ export function App(): React.ReactNode {
               ) : null}
             </box>
           </box>
-          <text fg={theme.muted}>{'─'.repeat(CONTENT_WIDTH)}</text>
+          <text fg={theme.accent}>{'─'.repeat(CONTENT_WIDTH)}</text>
           <box flexDirection="row" alignItems="center">
             <PlaybackControls
               isPlaying={isPlaying}
