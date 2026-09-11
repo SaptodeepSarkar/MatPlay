@@ -6,6 +6,7 @@ export type LyricsPanelProps = {
   lines: LyricLine[];
   positionMs: number;
   theme: StitchTheme;
+  scrollOffset?: number;
 };
 
 const WINDOW = 3;
@@ -20,6 +21,7 @@ export function LyricsPanel({
   lines,
   positionMs,
   theme,
+  scrollOffset = 0,
 }: LyricsPanelProps): React.ReactNode {
   if (lines.length === 0) {
     return <text fg={theme.muted}>No lyrics found.</text>;
@@ -29,10 +31,10 @@ export function LyricsPanel({
   if (timed.length === 0) {
     return (
       <box flexDirection="column" backgroundColor="transparent">
-        {lines.slice(0, WINDOW).map((line, index) => (
+        {lines.slice(scrollOffset, scrollOffset + WINDOW).map((line, index) => (
           // eslint-disable-next-line react/no-array-index-key
           <text key={index} fg={theme.muted}>
-            {line.text}
+            {`${scrollOffset + index + 1}. ${line.text}`}
           </text>
         ))}
       </box>

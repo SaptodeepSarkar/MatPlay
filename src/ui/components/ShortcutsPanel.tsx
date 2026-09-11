@@ -17,6 +17,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ['+ −', 'Volume up / down'],
   ['M', 'Mute'],
   ['L', 'Toggle lyrics'],
+  ['↑ ↓', 'Scroll plain lyrics'],
   ['S', 'Settings menu'],
   ['D', 'Library diagnostics'],
   ['R', 'Rescan library'],

@@ -193,6 +193,7 @@ export function App(): React.ReactNode {
   const [queueSel, setQueueSel] = useState(0);
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
   const [lyricsVisible, setLyricsVisible] = useState(true);
+  const [lyricsOffset, setLyricsOffset] = useState(0);
   const [meta, setMeta] = useState<TrackMeta>(() =>
     track ? metaFromFolder(track, FALLBACK_COVER) : {
       title: 'No tracks found',
@@ -286,6 +287,7 @@ export function App(): React.ReactNode {
   // ready — cached switches apply instantly with no fallback flash.
   useEffect(() => {
     if (!track) return undefined;
+    setLyricsOffset(0);
     let cancelled = false;
     updateConfig({ lastTrackId: track.id, lastPlaylist: track.playlist });
     const cachedMeta = metaCache.current.get(track.id);
@@ -796,6 +798,10 @@ export function App(): React.ReactNode {
       next();
     } else if (has('p')) {
       previous();
+    } else if (has(...UP) && lyricsVisible) {
+      setLyricsOffset((offset) => Math.max(0, offset - 1));
+    } else if (has(...DOWN) && lyricsVisible) {
+      setLyricsOffset((offset) => Math.min(Math.max(0, lyrics.length - 3), offset + 1));
     } else if (has(...LEFT)) {
       seekTo(positionMsRef.current - 5000);
     } else if (has(...RIGHT)) {
@@ -879,7 +885,7 @@ export function App(): React.ReactNode {
                 theme={theme}
               />
               {lyricsVisible ? (
-                <LyricsPanel lines={lyrics} positionMs={positionMs} theme={theme} />
+                <LyricsPanel lines={lyrics} positionMs={positionMs} theme={theme} scrollOffset={lyricsOffset} />
               ) : null}
             </box>
           </box>
