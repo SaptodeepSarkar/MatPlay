@@ -9,7 +9,7 @@ export type SettingsMenuProps = {
   loopSingle: boolean;
   theme: StitchTheme;
   selectedIndex: number;
-  themeMode: 'dark' | 'light';
+  themeMode: 'cover' | 'light';
   accentColor: string;
   vizGain: number;
   vizMaxHeight: number;
@@ -59,7 +59,7 @@ export function SettingsMenu({
   const settingRows = [
     truncateText(`MUSIC ROOT  ${musicDir}`, 29),
     `THEME       ${themeMode.toUpperCase()}`,
-    `ACCENT      ${accentColor.toUpperCase()}`,
+    `ACCENT      ${accentColor === 'auto' ? 'COVER AUTO' : accentColor.toUpperCase()}`,
     `VIZ GAIN    ${vizGain.toFixed(1)}`,
     `VIZ HEIGHT  ${Math.round(vizMaxHeight * 100)}%`,
     'RESET CONFIG',

@@ -16,9 +16,9 @@ const ConfigSchema = z.object({
   lastPlaylist: z.string().optional(),
   lastTrackId: z.string().optional(),
   /** Reserved for a future manual theme override. */
-  theme: z.enum(['dark', 'light']).default('dark'),
+  theme: z.enum(['cover', 'light']).default('cover'),
   /** Reserved for a future manual accent override. */
-  accentColor: z.string().default('#BB86FC'),
+  accentColor: z.string().default('auto'),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;
@@ -29,8 +29,8 @@ export function defaultConfig(): AppConfig {
     volume: 0.62,
     vizGain: 1.6,
     vizMaxHeight: 0.92,
-    theme: 'dark',
-    accentColor: '#BB86FC',
+    theme: 'cover',
+    accentColor: 'auto',
   };
 }
 
@@ -55,7 +55,15 @@ export function configExists(): boolean {
 export function loadConfig(): AppConfig {
   try {
     const raw = JSON.parse(readFileSync(configPath(), 'utf8')) as unknown;
-    return ConfigSchema.parse({ ...defaultConfig(), ...(typeof raw === 'object' && raw !== null ? raw : {}) });
+    const migrated = typeof raw === 'object' && raw !== null
+      ? { ...raw as Record<string, unknown> }
+      : {};
+    // The original settings implementation wrote these fixed defaults even
+    // though MatPlay was intended to follow cover art. Treat them as legacy
+    // values; users can still select explicit colors from Settings.
+    if (migrated.theme === 'dark') migrated.theme = 'cover';
+    if (migrated.accentColor === '#BB86FC') migrated.accentColor = 'auto';
+    return ConfigSchema.parse({ ...defaultConfig(), ...migrated });
   } catch {
     return defaultConfig();
   }

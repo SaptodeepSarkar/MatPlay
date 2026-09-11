@@ -45,7 +45,7 @@ export type PlaybackStatus = 'stopped' | 'playing' | 'paused';
 
 export type AppConfig = {
   musicRoot: string;
-  theme: 'dark' | 'light';
+  theme: 'cover' | 'light';
   accentColor: string;
   volume: number;
   lastPlaylist?: string;

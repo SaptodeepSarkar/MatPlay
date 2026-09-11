@@ -42,6 +42,11 @@ const RESTART_THRESHOLD_MS = 3000;
 const FADE_STEPS = 18;
 const FADE_INTERVAL_MS = 55;
 
+function preferredTheme(target: StitchTheme, config: AppConfig): StitchTheme {
+  const base = config.theme === 'light' ? stitchFallbackTheme : target;
+  return config.accentColor === 'auto' ? base : { ...base, accent: config.accentColor };
+}
+
 const FALLBACK_COVER = fileURLToPath(
   new URL('../../stitch/kalyani-cover.jpg', import.meta.url),
 );
@@ -162,8 +167,7 @@ export function App(): React.ReactNode {
   queueIndexRef.current = queueIndex;
 
   const [theme, setTheme] = useState<StitchTheme>(() => {
-    const base = config.theme === 'light' ? stitchFallbackTheme : KALYANI_COVER_THEME;
-    return { ...base, accent: config.accentColor };
+    return preferredTheme(KALYANI_COVER_THEME, config);
   });
   // Resume paused on the last played song; never autoplay on startup.
   const [isPlaying, setIsPlaying] = useState(false);
@@ -229,9 +233,7 @@ export function App(): React.ReactNode {
 
   const fadeTo = (target: StitchTheme): void => {
     const from = themeRef.current;
-    const preferred = configRef.current.theme === 'light'
-      ? { ...stitchFallbackTheme, accent: configRef.current.accentColor }
-      : { ...target, accent: configRef.current.accentColor };
+    const preferred = preferredTheme(target, configRef.current);
     if (fadeTimer.current) clearInterval(fadeTimer.current);
     let step = 0;
     fadeTimer.current = setInterval(() => {
@@ -682,14 +684,17 @@ export function App(): React.ReactNode {
           setSetupOpen(true);
           setMenuOpen(false);
         } else if (menuIndex === 1) {
-          const mode = config.theme === 'dark' ? 'light' : 'dark';
+          const mode = config.theme === 'cover' ? 'light' : 'cover';
           updateConfig({ theme: mode });
-          setTheme(mode === 'light' ? { ...stitchFallbackTheme, accent: config.accentColor } : { ...KALYANI_COVER_THEME, accent: config.accentColor });
+          const sampled = paletteCache.current.get(meta.coverSrc) ?? KALYANI_COVER_THEME;
+          setTheme(preferredTheme(sampled, { ...config, theme: mode }));
         } else if (menuIndex === 2) {
-          const accents = ['#BB86FC', '#03DAC6', '#D9AB4E', '#FF5A00'];
-          const nextAccent = accents[(accents.indexOf(config.accentColor.toUpperCase()) + 1) % accents.length] ?? accents[0]!;
+          const accents = ['auto', '#BB86FC', '#03DAC6', '#D9AB4E', '#FF5A00'];
+          const currentAccent = config.accentColor === 'auto' ? 'auto' : config.accentColor.toUpperCase();
+          const nextAccent = accents[(accents.indexOf(currentAccent) + 1) % accents.length] ?? accents[0]!;
           updateConfig({ accentColor: nextAccent });
-          setTheme((current) => ({ ...current, accent: nextAccent }));
+          const sampled = paletteCache.current.get(meta.coverSrc) ?? themeRef.current;
+          setTheme(nextAccent === 'auto' ? sampled : { ...themeRef.current, accent: nextAccent });
         } else if (menuIndex === 3) {
           updateConfig({ vizGain: config.vizGain >= 4 ? 0.2 : Math.round((config.vizGain + 0.2) * 10) / 10 });
         } else if (menuIndex === 4) {
