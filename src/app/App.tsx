@@ -35,8 +35,7 @@ import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
 import type { Track } from '../library/types.js';
 
-const SEEK_WIDTH = 44;
-const CONTENT_WIDTH = 28 + 3 + SEEK_WIDTH;
+const WIDE_CONTENT_WIDTH = 75;
 const RESTART_THRESHOLD_MS = 3000;
 const FADE_STEPS = 18;
 const FADE_INTERVAL_MS = 55;
@@ -66,6 +65,10 @@ export function App(): React.ReactNode {
   const { width, height } = useTerminalDimensions();
   const vizColumns = Math.max(16, Math.floor(width / 2));
   const vizRows = Math.max(8, height);
+  const compact = width < 82;
+  const tiny = width < 52 || height < 22;
+  const contentWidth = Math.max(28, Math.min(WIDE_CONTENT_WIDTH, width - 4));
+  const seekWidth = compact ? Math.max(24, contentWidth - 2) : 44;
 
   const [config, setConfig] = useState<AppConfig>(() => loadConfig());
   const [setupOpen, setSetupOpen] = useState(() => !configExists());
@@ -737,9 +740,9 @@ export function App(): React.ReactNode {
       </box>
 
       <box flexGrow={1} justifyContent="center" alignItems="center">
-        <box flexDirection="column" width={CONTENT_WIDTH} gap={1}>
-          <box flexDirection="row" gap={3}>
-            <AlbumArtwork src={meta.coverSrc} theme={theme} />
+        <box flexDirection="column" width={contentWidth} gap={1}>
+          <box flexDirection={compact ? 'column' : 'row'} gap={compact ? 1 : 3} alignItems={compact ? 'center' : undefined}>
+            {!tiny ? <AlbumArtwork src={meta.coverSrc} theme={theme} width={compact ? 16 : 26} height={compact ? 8 : 13} /> : null}
             <box flexDirection="column" gap={1} justifyContent="flex-start" paddingTop={1}>
               <TrackMetadata
                 trackNo={queueIndex + 1}
@@ -751,7 +754,7 @@ export function App(): React.ReactNode {
               <SeekBar
                 positionMs={positionMs}
                 durationMs={meta.durationMs ?? 0}
-                widthChars={SEEK_WIDTH}
+                widthChars={seekWidth}
                 theme={theme}
               />
               {lyricsVisible ? (
@@ -759,8 +762,8 @@ export function App(): React.ReactNode {
               ) : null}
             </box>
           </box>
-          <text fg={theme.accent}>{'─'.repeat(CONTENT_WIDTH)}</text>
-          <box flexDirection="row" alignItems="center">
+          <text fg={theme.accent}>{'─'.repeat(contentWidth)}</text>
+          <box flexDirection={contentWidth < 66 ? 'column' : 'row'} alignItems="center">
             <PlaybackControls
               isPlaying={isPlaying}
               shuffle={shuffle}
