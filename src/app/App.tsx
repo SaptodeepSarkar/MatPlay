@@ -881,11 +881,10 @@ export function App(): React.ReactNode {
 
       <box flexDirection="row" alignItems="center" paddingX={2} paddingTop={1} backgroundColor="transparent">
         <box
-          width={7}
+          width={5}
           height={3}
-          borderStyle="rounded"
-          borderColor={theme.text}
-          backgroundColor={theme.complement}
+          flexDirection="column"
+          backgroundColor="transparent"
           justifyContent="center"
           alignItems="center"
           onMouseDown={() => {
@@ -894,7 +893,9 @@ export function App(): React.ReactNode {
             setMenuOpen(opening);
           }}
         >
-          <text fg={theme.appBg}><strong>{'\uf013'}</strong></text>
+          <text fg={theme.signal}>{' ▄▄▄ '}</text>
+          <text fg={theme.appBg} bg={theme.signal}><strong>{'  \uf013  '}</strong></text>
+          <text fg={theme.signal}>{' ▀▀▀ '}</text>
         </box>
         <box flexGrow={1} />
         <text fg={library.diagnostics.length > 0 ? theme.signal : theme.muted}>
