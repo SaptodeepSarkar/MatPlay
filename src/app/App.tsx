@@ -3,7 +3,7 @@ import { useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { KALYANI_COVER_THEME, stitchFallbackTheme, type StitchTheme } from '../ui/stitchTheme.js';
-import { lerpTheme, sampleCoverTheme } from '../ui/palette.js';
+import { sampleCoverTheme } from '../ui/palette.js';
 import { AlbumArtwork } from '../ui/components/AlbumArtwork.js';
 import { TrackMetadata } from '../ui/components/TrackMetadata.js';
 import { SeekBar } from '../ui/components/SeekBar.js';
@@ -41,9 +41,6 @@ import type { Track } from '../library/types.js';
 
 const WIDE_CONTENT_WIDTH = 75;
 const RESTART_THRESHOLD_MS = 3000;
-const FADE_STEPS = 18;
-const FADE_INTERVAL_MS = 55;
-
 function preferredTheme(target: StitchTheme, config: AppConfig): StitchTheme {
   const base = config.theme === 'light' ? stitchFallbackTheme : target;
   return config.accentColor === 'auto' ? base : { ...base, accent: config.accentColor };
@@ -238,27 +235,25 @@ export function App(): React.ReactNode {
       resetTerminalBackground();
     };
   }, []);
-  const fadeTimer = useRef<NodeJS.Timeout | undefined>(undefined);
   const paletteCache = useRef(new Map<string, StitchTheme>());
   const metaCache = useRef(new Map<string, TrackMeta>());
   const lyricsCache = useRef(new Map<string, LyricLine[]>());
 
-  const fadeTo = (target: StitchTheme): void => {
-    const from = themeRef.current;
+  const applyTheme = (target: StitchTheme): void => {
     const preferred = preferredTheme(target, configRef.current);
-    if (fadeTimer.current) clearInterval(fadeTimer.current);
-    let step = 0;
-    fadeTimer.current = setInterval(() => {
-      step += 1;
-      setTheme(lerpTheme(from, preferred, step / FADE_STEPS));
-      if (step >= FADE_STEPS && fadeTimer.current) {
-        clearInterval(fadeTimer.current);
-        fadeTimer.current = undefined;
-      }
-    }, FADE_INTERVAL_MS);
+    const unchanged = Object.keys(preferred).every((key) =>
+      preferred[key as keyof StitchTheme] === themeRef.current[key as keyof StitchTheme],
+    );
+    if (unchanged) return;
+    // OSC 11 changes repaint the whole terminal. Apply the completed palette
+    // atomically so cover switches cannot flash through intermediate colors.
+    themeRef.current = preferred;
+    setTheme(preferred);
   };
 
   const backendRef = useRef<PlayerBackend | undefined>(undefined);
+  const audioLoadRef = useRef<Promise<void>>(Promise.resolve());
+  const trackLoadGeneration = useRef(0);
   const backend = (): PlayerBackend => {
     if (!backendRef.current) {
       const instance: PlayerBackend =
@@ -312,6 +307,7 @@ export function App(): React.ReactNode {
     if (!track) return undefined;
     setLyricsOffset(0);
     let cancelled = false;
+    const generation = ++trackLoadGeneration.current;
     if (!process.env.MATPLAY_MUSIC_ROOT) {
       updateConfig({ lastTrackId: track.id, lastPlaylist: track.playlist });
     }
@@ -321,9 +317,32 @@ export function App(): React.ReactNode {
       setMeta(cachedMeta);
       presenceRef.current?.updateTrack(track, cachedMeta);
       const cachedPalette = paletteCache.current.get(cachedMeta.coverSrc);
-      if (cachedPalette) fadeTo(cachedPalette);
+      if (cachedPalette) applyTheme(cachedPalette);
       if (cachedLyrics) setLyrics(cachedLyrics);
     }
+
+    // Decoder loads are serialized because both backends own one process.
+    // The generation check gives rapid next/previous input latest-wins
+    // semantics and prevents a slow older load from resuming the wrong song.
+    const queuedLoad = audioLoadRef.current.catch(() => undefined).then(async () => {
+      if (cancelled || generation !== trackLoadGeneration.current) return;
+      const player = backend();
+      await player.load(track);
+      if (cancelled || generation !== trackLoadGeneration.current) return;
+      if (isPlayingRef.current) {
+        await player.play();
+        if (!cancelled && generation === trackLoadGeneration.current) {
+          feed().start(track.audioPath, 0);
+        }
+      }
+    });
+    audioLoadRef.current = queuedLoad.catch((error: unknown) => {
+      if (!cancelled && generation === trackLoadGeneration.current) {
+        setAudioError(error instanceof Error ? error.message : String(error));
+        setIsPlaying(false);
+      }
+    });
+
     void (async () => {
       const enriched = cachedMeta ?? await loadTrackMeta(track, FALLBACK_COVER);
       if (cancelled) return;
@@ -333,12 +352,12 @@ export function App(): React.ReactNode {
       presenceRef.current?.updatePlaybackStatus(isPlayingRef.current, true);
       const cached = paletteCache.current.get(enriched.coverSrc);
       if (cached) {
-        fadeTo(cached);
+        applyTheme(cached);
       } else {
         const sampled = await sampleCoverTheme(enriched.coverSrc, themeRef.current);
         if (cancelled) return;
         paletteCache.current.set(enriched.coverSrc, sampled);
-        fadeTo(sampled);
+        applyTheme(sampled);
       }
       let lines = lyricsCache.current.get(track.id);
       if (!lines && track.lyricsPath) {
@@ -352,19 +371,9 @@ export function App(): React.ReactNode {
       }
       if (cancelled) return;
       setLyrics(lines ?? []);
-      const player = backend();
-      await player.load(track);
-      if (isPlayingRef.current) {
-        await player.play();
-        feed().start(track.audioPath, 0);
-      }
     })();
     return () => {
       cancelled = true;
-      if (fadeTimer.current) {
-        clearInterval(fadeTimer.current);
-        fadeTimer.current = undefined;
-      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queueIndex, queue]);

@@ -1,7 +1,7 @@
 # MatPlay
 
 > Local-first terminal music player with a cover-art-adaptive TUI. The UI
-> re-skins itself from the current track's cover art (with a smooth fade),
+> re-skins itself from the current track's cover art (with an atomic switch),
 > cover art renders as real pixels via terminal graphics protocols, and a
 > CAVA-driven visualizer fills the screen behind everything.
 
