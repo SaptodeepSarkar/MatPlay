@@ -29,6 +29,28 @@ export class Mpg123Backend implements AudioBackend {
   private durationMs: number | undefined;
   private volume = 0.62;
   private lastPath: string | undefined;
+  private endTimer: NodeJS.Timeout | undefined;
+
+  private clearEndTimer(): void {
+    if (this.endTimer) clearTimeout(this.endTimer);
+    this.endTimer = undefined;
+  }
+
+  private scheduleEnd(): void {
+    this.clearEndTimer();
+    if (!this.playing || this.durationMs === undefined) return;
+    const remaining = Math.max(0, this.durationMs - this.positionMs);
+    this.endTimer = setTimeout(() => this.finishNaturally(), remaining + 250);
+  }
+
+  private finishNaturally(): void {
+    if (!this.playing || this.endedSinceLoad) return;
+    this.clearEndTimer();
+    this.positionMs = this.durationMs ?? this.positionMs;
+    this.playing = false;
+    this.endedSinceLoad = true;
+    this.onEnded?.();
+  }
 
   private ensure(): boolean {
     if (this.proc || !this.available) return this.available;
@@ -70,6 +92,7 @@ export class Mpg123Backend implements AudioBackend {
   }
 
   async load(track: Track): Promise<void> {
+    this.clearEndTimer();
     this.positionMs = 0;
     this.playing = false;
     this.endedSinceLoad = false;
@@ -123,14 +146,19 @@ export class Mpg123Backend implements AudioBackend {
       if (this.lastPath) this.send(`LOADPAUSED ${this.lastPath}`);
     }
     this.send('PAUSE');
+    this.playing = true;
+    this.scheduleEnd();
   }
 
   async pause(): Promise<void> {
     if (!this.playing || !this.ensure()) return;
     this.send('PAUSE');
+    this.playing = false;
+    this.clearEndTimer();
   }
 
   async stop(): Promise<void> {
+    this.clearEndTimer();
     this.positionMs = 0;
     this.playing = false;
     if (!this.ensure()) return;
@@ -150,6 +178,7 @@ export class Mpg123Backend implements AudioBackend {
       this.endedSinceLoad = false;
     }
     this.send(`JUMP ${(clamped / 1000).toFixed(2)}s`);
+    this.scheduleEnd();
   }
 
   async setVolume(volume: number): Promise<void> {
@@ -168,6 +197,7 @@ export class Mpg123Backend implements AudioBackend {
   }
 
   async destroy(): Promise<void> {
+    this.clearEndTimer();
     this.playing = false;
     const child = this.proc;
     this.proc = undefined;
@@ -211,6 +241,7 @@ export class Mpg123Backend implements AudioBackend {
       }
       if (Number.isFinite(elapsed) && Number.isFinite(remaining)) {
         this.durationMs = Math.round((elapsed + remaining) * 1000);
+        this.scheduleEnd();
       }
     } else if (line === '@P 2') {
       this.playing = true;
@@ -218,9 +249,11 @@ export class Mpg123Backend implements AudioBackend {
       // A fresh play cycle disarms any stale stop expectation, so a later
       // natural EOF is reported instead of swallowed.
       this.expectStop = false;
+      this.scheduleEnd();
       this.flushLoadWaiters();
     } else if (line === '@P 1') {
       this.playing = false;
+      this.clearEndTimer();
       this.flushLoadWaiters();
     } else if (line === '@P 0') {
       const wasPlaying = this.playing;
@@ -228,8 +261,8 @@ export class Mpg123Backend implements AudioBackend {
       const expected = this.expectStop;
       this.expectStop = false;
       if (wasPlaying && !expected) {
-        this.endedSinceLoad = true;
-        this.onEnded?.();
+        this.playing = true;
+        this.finishNaturally();
       }
     }
     // @P 3 (transient), @V/@J (acks), @S/@I/@T (info) need no action.
