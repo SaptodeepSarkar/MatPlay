@@ -32,6 +32,22 @@ npm run check   # verify node/ffmpeg/ffplay/cava/fifo on any machine
 npm run dev     # run from source
 ```
 
+### Per-platform dependency notes (verified Sep 2026)
+
+| System | ffmpeg | mpg123 | cava | Notes |
+| --- | --- | --- | --- | --- |
+| Arch (pacman) | extra ✓ | extra ✓ | extra ✓ | Full experience |
+| Fedora (dnf) | RPM Fusion ❗ | official ✓ | official ✓ | Installer enables RPM Fusion |
+| Ubuntu/Debian (apt) | main ✓ | universe ✓ | **never `apt install cava`** — that name is a Java library! Build karlstav/cava from source or use the fallback | |
+| openSUSE (zypper) | Packman ❗ | OSS ✓ | OSS ✓ | Installer adds Packman |
+| Alpine (apk) | main ✓ | main ✓ | edge-testing only | Falls back if missing |
+| macOS (brew) | ✓ | ✓ | ✓ | Full experience |
+| Windows (winget) | Gyan.FFmpeg ✓ | — | — | ffplay backend + procedural visualizer |
+
+Node.js ≥ 26.4 never comes from distro repos — use fnm/nvm/nodejs.org
+on Linux, `winget install OpenJS.NodeJS` on Windows (the script
+re-verifies the version and fails loudly if winget tracks an older one).
+
 ## Config
 
 `~/.config/matplay/config.json` (Linux/macOS) or
