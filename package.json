@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "bin": {
-    "matplay": "./bin/matplay"
+    "matplay": "./bin/matplay.js"
   },
   "scripts": {
     "dev": "NODE_OPTIONS=--experimental-ffi tsx src/main.tsx",
