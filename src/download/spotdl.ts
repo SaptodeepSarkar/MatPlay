@@ -44,6 +44,18 @@ export function sanitizePlaylistName(value: string): string {
   return cleaned || 'Downloads';
 }
 
+/** Preserve a normal text search, but expand batches of pasted links. */
+export function parseSpotdlQueries(value: string): string[] {
+  const input = value.trim();
+  if (!input) return [];
+  const urls = input.match(/https?:\/\/[^\s,]+/g)?.map((url) =>
+    url.replace(/[\])}>.,;]+$/g, ''),
+  ) ?? [];
+  if (urls.length > 1) return urls;
+  const lines = input.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  return lines.length > 1 ? lines : [input];
+}
+
 export function buildSpotdlInvocation(request: SpotdlRequest): SpotdlInvocation {
   const playlist = sanitizePlaylistName(request.playlist);
   const root = path.resolve(request.musicRoot);
@@ -52,7 +64,7 @@ export function buildSpotdlInvocation(request: SpotdlRequest): SpotdlInvocation 
     throw new Error('Playlist must stay inside the music library.');
   }
 
-  const query = request.query.trim();
+  const queries = parseSpotdlQueries(request.query);
   const output = path.join(
     targetDir,
     '{artist}',
@@ -62,10 +74,10 @@ export function buildSpotdlInvocation(request: SpotdlRequest): SpotdlInvocation 
   const common = ['--output', output, '--format', 'mp3', '--log-level', 'INFO'];
 
   if (request.mode === 'download') {
-    if (!query) throw new Error('Enter a song name or Spotify link.');
+    if (queries.length === 0) throw new Error('Enter a song name or Spotify link.');
     return {
       command: 'spotdl',
-      args: ['download', query, ...common],
+      args: ['download', ...queries, ...common],
       playlist,
       targetDir,
     };
@@ -74,12 +86,15 @@ export function buildSpotdlInvocation(request: SpotdlRequest): SpotdlInvocation 
   const stateDir = path.join(targetDir, '.matplay');
   const syncFile = path.join(stateDir, 'playlist.sync.spotdl');
   const hasSavedSync = existsSync(syncFile);
-  if (!hasSavedSync && !query) {
+  if (!hasSavedSync && queries.length === 0) {
     throw new Error('Paste a Spotify playlist link to start syncing.');
+  }
+  if (!hasSavedSync && queries.length > 1) {
+    throw new Error('Playlist sync accepts one Spotify playlist link.');
   }
   const args = hasSavedSync
     ? ['sync', syncFile, ...common]
-    : ['sync', query, '--save-file', syncFile, ...common];
+    : ['sync', queries[0] as string, '--save-file', syncFile, ...common];
   if (!request.deleteRemoved) args.push('--sync-without-deleting');
   if (request.deleteRemoved) args.push('--sync-remove-lrc');
   return {

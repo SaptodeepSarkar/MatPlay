@@ -87,7 +87,7 @@ export function SpotdlPanel({
         </text>
       </box>
       <text fg={theme.muted}>
-        Paste a Spotify link or type a song name. Files are arranged by artist and title.
+        Paste one or many song links, or type a song name. Files are arranged by artist and title.
       </text>
 
       <text fg={selectedIndex === 0 ? theme.accent : theme.muted}>QUERY / SPOTIFY URL</text>
@@ -97,7 +97,7 @@ export function SpotdlPanel({
           width={inputWidth}
           focused={selectedIndex === 0 && !running}
           value={query}
-          placeholder={mode === 'sync' ? 'playlist URL (blank re-syncs saved state)' : 'song name, track URL, or playlist URL'}
+          placeholder={mode === 'sync' ? 'one playlist URL (blank re-syncs saved state)' : 'song name or multiple links separated by spaces'}
           onInput={onQuery}
         />
       </box>
