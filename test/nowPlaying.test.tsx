@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync, mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { act } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { testRender } from '@opentui/react/test-utils';
 import { stepViz, applySpectrum } from '../src/ui/visualizerEngine.js';
@@ -81,6 +81,71 @@ describe('now playing mock', () => {
     expect(frame).toContain('QUERY / SPOTIFY URL');
     expect(frame).toContain('LOCAL PLAYLIST');
     expect(frame).toContain('KEEP LOCAL (SAFE)');
+    setup.renderer.destroy();
+  });
+
+  it('shows the SYNC NOW row in settings', async () => {
+    const setup = await testRender(<App />, { width: 110, height: 50 });
+    await setup.renderOnce();
+    await act(async () => {
+      await setup.mockInput.pressKey('s');
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    });
+    for (let index = 0; index < 6; index++) {
+      await act(async () => {
+        setup.mockInput.pressArrow('down');
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+      await setup.renderOnce();
+    }
+    await setup.renderOnce();
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain('SYNC NOW');
+    setup.renderer.destroy();
+  });
+
+  it('warns before quitting during a download', async () => {
+    const spotdl = await import('../src/download/spotdl.js');
+    const runSpotdlSpy = vi.spyOn(spotdl, 'runSpotdl').mockReturnValue(new Promise(() => {}));
+    const setup = await testRender(<App />, { width: 110, height: 50 });
+    await setup.renderOnce();
+    await act(async () => {
+      await setup.mockInput.pressKey('s');
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    });
+    await setup.renderOnce();
+    for (let index = 0; index < 6; index++) {
+      await act(async () => {
+        setup.mockInput.pressArrow('down');
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+      await setup.renderOnce();
+    }
+    await act(async () => {
+      setup.mockInput.pressEnter();
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    });
+    await setup.renderOnce();
+    for (let index = 0; index < 4; index++) {
+      await act(async () => {
+        setup.mockInput.pressArrow('down');
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+      await setup.renderOnce();
+    }
+    await act(async () => {
+      setup.mockInput.pressEnter();
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    });
+    await setup.renderOnce();
+    await act(async () => {
+      setup.mockInput.pressKey('q');
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    });
+    await setup.renderOnce();
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain('DOWNLOAD OR SYNC IS STILL RUNNING');
+    runSpotdlSpy.mockRestore();
     setup.renderer.destroy();
   });
 });
