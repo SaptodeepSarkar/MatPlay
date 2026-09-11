@@ -16,7 +16,7 @@
     padding: 48px 32px;
   }
 
-  .container { max-width: 1200px; margin: 0 auto; }
+  .container { max-width: 1000px; margin: 0 auto; }
 
   .hero {
     text-align: center;
@@ -52,59 +52,45 @@
     letter-spacing: 0.5px;
   }
 
-  /* Bento Grid — all cells square for alignment */
-  .bento {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    grid-auto-rows: 260px;
-    gap: 12px;
+  /* Column layout — full images */
+  .gallery {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
     margin-bottom: 40px;
   }
 
-  .cell {
-    position: relative;
+  .shot {
     border-radius: 16px;
     overflow: hidden;
-    background: #12121a;
     border: 1px solid #1e1e2e;
+    background: #12121a;
     transition: transform 0.2s, border-color 0.3s;
     cursor: pointer;
   }
-  .cell:hover {
+  .shot:hover {
     transform: translateY(-2px);
     border-color: #2a2a3e;
   }
-  .cell img {
+  .shot img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
     display: block;
   }
-  .cell .label {
-    position: absolute;
-    bottom: 0;
-    left: 0; right: 0;
+  .shot .label {
     padding: 14px 16px;
     background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
     font-size: 13px;
     font-weight: 500;
     color: #e8e8ed;
   }
-  .cell .label .sub {
+  .shot .label .sub {
     font-size: 10px;
     color: #6a6a7a;
     font-family: 'JetBrains Mono', monospace;
     margin-top: 2px;
     font-weight: 400;
   }
-
-  /* Size variants */
-  .s-hero { grid-column: span 2; grid-row: span 2; }
-  .s-wide { grid-column: span 2; }
-  .s-normal { grid-column: span 1; grid-row: span 1; }
-
-  .cell.accent { background: #0d1a0d; border-color: #1a2e1a; }
-  .cell.amber { background: #1a1408; border-color: #2e2510; }
 
   .info-grid {
     display: grid;
@@ -139,12 +125,6 @@
     font-size: 13px;
     color: #3a3a4a;
   }
-
-  @media (max-width: 700px) {
-    .bento { grid-template-columns: 1fr; grid-auto-rows: 200px; }
-    .s-hero, .s-wide { grid-column: span 1; grid-row: span 1; }
-    body { padding: 24px 16px; }
-  }
 </style>
 </head>
 <body>
@@ -153,54 +133,59 @@
   <div class="hero">
     <h1>MatPlay</h1>
     <p>Local-first terminal music player with a cover-art-adaptive TUI. Screenshots captured live in foot.</p>
-    <span class="badge">● 5 SCREENSHOTS  ·  1920×1080  ·  FOOT TERMINAL</span>
+    <span class="badge">● 5 SCREENSHOTS · 1920×1080 · FOOT TERMINAL</span>
   </div>
 
-  <!-- Bento Grid — all square thumbnails for perfect alignment -->
-  <div class="bento">
+  <!-- Column: full images, no crop -->
+  <div class="gallery">
 
-    <!-- Hero: paused (full shot, 2×2) -->
-    <div class="cell s-hero amber">
-      <img src="../Shots/paused.png" alt="MatPlay paused state">
+    <div class="shot">
+      <a href="https://github.com/SaptodeepSarkar/MatPlay" target="_blank">
+        <img src="../Shots/playing-visualizer.png" alt="MatPlay playing with CAVA visualizer">
+      </a>
       <div class="label">
-        Paused
-        <div class="sub">PAUSED · -9.1dB · MP3 128KBPS</div>
+        CAVA Visualizer
+        <div class="sub">PLAYING · MPG123 · PRIVATE FIFO FEED</div>
       </div>
     </div>
 
-    <!-- Lyrics mode -->
-    <div class="cell s-normal">
-      <img src="../Shots/playing-lyrics.png" alt="MatPlay lyrics mode">
+    <div class="shot">
+      <a href="https://github.com/SaptodeepSarkar/MatPlay" target="_blank">
+        <img src="../Shots/playing-lyrics.png" alt="MatPlay lyrics mode">
+      </a>
       <div class="label">
-        Lyrics
-        <div class="sub">LRC · TRAVELING WINDOW</div>
+        Lyrics Mode
+        <div class="sub">LRC · 3-LINE TRAVELING WINDOW</div>
       </div>
     </div>
 
-    <!-- Green palette -->
-    <div class="cell s-normal accent">
-      <img src="../Shots/playing-green.png" alt="MatPlay adaptive palette">
+    <div class="shot">
+      <a href="https://github.com/SaptodeepSarkar/MatPlay" target="_blank">
+        <img src="../Shots/playing-green.png" alt="MatPlay adaptive green palette">
+      </a>
       <div class="label">
-        Adaptive
-        <div class="sub">COVER-ART DRIVEN</div>
+        Adaptive Palette
+        <div class="sub">COVER-ART DRIVEN · GREEN THEME</div>
       </div>
     </div>
 
-    <!-- Visualizer -->
-    <div class="cell s-normal">
-      <img src="../Shots/playing-visualizer.png" alt="MatPlay CAVA visualizer">
-      <div class="label">
-        Visualizer
-        <div class="sub">CAVA · MPG123</div>
-      </div>
-    </div>
-
-    <!-- Full spectrum (wide) -->
-    <div class="cell s-wide">
-      <img src="../Shots/playing-full.png" alt="MatPlay full visualizer">
+    <div class="shot">
+      <a href="https://github.com/SaptodeepSarkar/MatPlay" target="_blank">
+        <img src="../Shots/playing-full.png" alt="MatPlay full spectrum">
+      </a>
       <div class="label">
         Full Spectrum
-        <div class="sub">CAVA · 48 BARS · PRIVATE FIFO</div>
+        <div class="sub">CAVA · 48 BARS · MAX VOLUME</div>
+      </div>
+    </div>
+
+    <div class="shot">
+      <a href="https://github.com/SaptodeepSarkar/MatPlay" target="_blank">
+        <img src="../Shots/paused.png" alt="MatPlay paused">
+      </a>
+      <div class="label">
+        Paused
+        <div class="sub">PAUSED · -9.1dB · MP3 128KBPS · 48.0KHZ</div>
       </div>
     </div>
 

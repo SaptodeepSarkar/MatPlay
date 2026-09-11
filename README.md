@@ -119,26 +119,30 @@ re-verifies the version and fails loudly if winget tracks an older one).
 
 <b>MatPlay in the terminal — real screenshots, no mockups.</b>
 
-<table style="width:100%;border-collapse:separate;border-spacing:6px;margin:16px 0;">
+<table style="width:100%;border:none;margin:16px 0;">
 <tr>
-<td colspan="2" style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;">
-<a href="Screenshots/index.html" target="_blank"><img src="Shots/thumbs/playing-visualizer-wide.png" alt="MatPlay playing with CAVA visualizer" style="width:100%;display:block;"></a>
+<td style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;">
+<a href="Screenshots/index.html" target="_blank"><img src="Shots/playing-visualizer.png" alt="MatPlay playing with CAVA visualizer" style="width:100%;display:block;"></a>
 </td>
 </tr>
 <tr>
 <td style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;">
-<a href="Screenshots/index.html" target="_blank"><img src="Shots/thumbs/playing-lyrics-square.png" alt="MatPlay lyrics mode" style="width:100%;display:block;"></a>
-</td>
-<td style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;">
-<a href="Screenshots/index.html" target="_blank"><img src="Shots/thumbs/playing-green-square.png" alt="MatPlay adaptive palette" style="width:100%;display:block;"></a>
+<a href="Screenshots/index.html" target="_blank"><img src="Shots/playing-lyrics.png" alt="MatPlay lyrics mode" style="width:100%;display:block;"></a>
 </td>
 </tr>
 <tr>
 <td style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;">
-<a href="Screenshots/index.html" target="_blank"><img src="Shots/thumbs/paused-square.png" alt="MatPlay paused" style="width:100%;display:block;"></a>
+<a href="Screenshots/index.html" target="_blank"><img src="Shots/playing-green.png" alt="MatPlay adaptive palette" style="width:100%;display:block;"></a>
 </td>
+</tr>
+<tr>
 <td style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;">
-<a href="Screenshots/index.html" target="_blank"><img src="Shots/thumbs/playing-full-square.png" alt="MatPlay full visualizer" style="width:100%;display:block;"></a>
+<a href="Screenshots/index.html" target="_blank"><img src="Shots/playing-full.png" alt="MatPlay full visualizer" style="width:100%;display:block;"></a>
+</td>
+</tr>
+<tr>
+<td style="border-radius:12px;overflow:hidden;border:1px solid #1e1e2e;">
+<a href="Screenshots/index.html" target="_blank"><img src="Shots/paused.png" alt="MatPlay paused" style="width:100%;display:block;"></a>
 </td>
 </tr>
 </table>
