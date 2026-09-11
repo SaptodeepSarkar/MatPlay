@@ -14,12 +14,12 @@ const TRACK = {
   no: 1,
   title: 'Kalyani (with Shreya Ghoshal) [Remix]',
   artist: 'ARJN',
-  playlist: 'Work',
   formatLabel: 'MP3 · 128KBPS · 48KHZ',
-  lyricCurrent: 'കരിമിഴിയുള്ള കളവാണി (हाँ)',
-  lyricNext: 'കാർ-കൂന്തല് കണ്ടപ്പൊ',
   durationMs: 260_016,
 } as const;
+
+const SEEK_WIDTH = 44;
+const CONTENT_WIDTH = 28 + 3 + SEEK_WIDTH;
 
 const COVER_SRC = fileURLToPath(
   new URL('../../stitch/kalyani-cover.jpg', import.meta.url),
@@ -78,43 +78,37 @@ export function App(): React.ReactNode {
       justifyContent="center"
       alignItems="center"
     >
-      <box
-        borderStyle="rounded"
-        borderColor={theme.muted}
-        backgroundColor={theme.card}
-        padding={2}
-        flexDirection="column"
-        gap={1}
-      >
+      <box flexDirection="column" width={CONTENT_WIDTH} gap={1}>
         <box flexDirection="row" gap={3}>
           <AlbumArtwork src={COVER_SRC} theme={theme} />
-          <box flexDirection="column" gap={1} justifyContent="center">
+          <box flexDirection="column" gap={1} justifyContent="flex-start" paddingTop={1}>
             <TrackMetadata
               trackNo={TRACK.no}
               title={TRACK.title}
               artist={TRACK.artist}
               formatLabel={TRACK.formatLabel}
-              playlist={TRACK.playlist}
-              lyricCurrent={TRACK.lyricCurrent}
-              lyricNext={TRACK.lyricNext}
               theme={theme}
             />
             <SeekBar
               positionMs={positionMs}
               durationMs={TRACK.durationMs}
-              widthChars={44}
+              widthChars={SEEK_WIDTH}
               theme={theme}
             />
           </box>
         </box>
-        <PlaybackControls
-          isPlaying={isPlaying}
-          shuffle={shuffle}
-          loopList={loopList}
-          loopSingle={loopSingle}
-          theme={theme}
-        />
-        <VolumeMeter volume={volume} theme={theme} />
+        <text fg={theme.muted}>{'─'.repeat(CONTENT_WIDTH)}</text>
+        <box flexDirection="row" alignItems="center">
+          <PlaybackControls
+            isPlaying={isPlaying}
+            shuffle={shuffle}
+            loopList={loopList}
+            loopSingle={loopSingle}
+            theme={theme}
+          />
+          <box flexGrow={1} />
+          <VolumeMeter volume={volume} theme={theme} />
+        </box>
       </box>
     </box>
   );

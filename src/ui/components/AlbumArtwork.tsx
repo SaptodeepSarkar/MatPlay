@@ -5,9 +5,9 @@ export type AlbumArtworkProps = {
   theme: StitchTheme;
 };
 
-export function AlbumArtwork({ src }: AlbumArtworkProps): React.ReactNode {
+export function AlbumArtwork({ src, theme }: AlbumArtworkProps): React.ReactNode {
   return (
-    <box borderStyle="rounded" borderColor="#c08a5e">
+    <box borderStyle="single" borderColor={theme.muted}>
       <image
         source={src}
         fit="cover"

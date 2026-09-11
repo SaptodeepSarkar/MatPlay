@@ -5,9 +5,6 @@ export type TrackMetadataProps = {
   title: string;
   artist: string;
   formatLabel: string;
-  playlist: string;
-  lyricCurrent?: string;
-  lyricNext?: string;
   theme: StitchTheme;
 };
 
@@ -16,9 +13,6 @@ export function TrackMetadata({
   title,
   artist,
   formatLabel,
-  playlist,
-  lyricCurrent,
-  lyricNext,
   theme,
 }: TrackMetadataProps): React.ReactNode {
   return (
@@ -32,16 +26,8 @@ export function TrackMetadata({
         <strong>{title.toUpperCase()}</strong>
       </text>
       <text fg={theme.muted}>
-        {artist.toUpperCase()} {'  /  '}
-        {formatLabel}
+        {artist.toUpperCase()}  /  {formatLabel}
       </text>
-      {lyricCurrent ? (
-        <text fg={theme.accent}>
-          <strong>♪ {lyricCurrent}</strong>
-        </text>
-      ) : null}
-      {lyricNext ? <text fg={theme.muted}>{lyricNext}</text> : null}
-      <text fg={theme.muted}>▤ {playlist}</text>
     </box>
   );
 }

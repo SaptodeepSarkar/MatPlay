@@ -5,25 +5,28 @@ export type VolumeMeterProps = {
   theme: StitchTheme;
 };
 
+const BARS = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+
+/** Ascending segmented meter with dB readout, after the Stitch VU meter. */
 export function VolumeMeter({ volume, theme }: VolumeMeterProps): React.ReactNode {
-  const filledBlocks = Math.round(volume * 8);
-  const filled = '█'.repeat(filledBlocks);
-  const empty = '░'.repeat(8 - filledBlocks);
+  const filledBlocks = Math.round(volume * BARS.length);
   const db = volume <= 0 ? '-∞' : `${(20 * Math.log10(volume)).toFixed(1)}dB`;
 
   return (
-    <box flexDirection="row" gap={1}>
-      <text fg={theme.muted}>VOL</text>
+    <box flexDirection="row" gap={1} alignItems="center">
       <text>
-        <span fg={theme.accent}>{filled}</span>
-        <span fg={theme.cardAlt}>{empty}</span>
+        {BARS.map((glyph, index) => (
+          <span
+            key={glyph}
+            fg={index < filledBlocks ? theme.accent : theme.cardAlt}
+          >
+            {glyph}
+          </span>
+        ))}
       </text>
       <text fg={theme.text}>
         <strong>{db}</strong>
       </text>
-      <box backgroundColor={theme.cardAlt}>
-        <text fg={theme.muted}> LP_01 </text>
-      </box>
     </box>
   );
 }

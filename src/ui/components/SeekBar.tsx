@@ -8,14 +8,17 @@ export type SeekBarProps = {
 };
 
 export function formatTime(ms: number): string {
-  const totalSeconds = Math.max(0, ms / 1000);
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const minutes = Math.floor(totalSeconds / 60);
-  const seconds = Math.floor(totalSeconds % 60);
-  const centiseconds = Math.floor((totalSeconds % 1) * 100);
+  const seconds = totalSeconds % 60;
   const pad = (value: number): string => String(value).padStart(2, '0');
-  return `${pad(minutes)}:${pad(seconds)}.${pad(centiseconds)}`;
+  return `${pad(minutes)}:${pad(seconds)}`;
 }
 
+/**
+ * Hairline rail with a square head, after the Stitch scrubber:
+ * 2px rail, solid fill, orange square marker, mono timecodes.
+ */
 export function SeekBar({
   positionMs,
   durationMs,
@@ -24,8 +27,11 @@ export function SeekBar({
 }: SeekBarProps): React.ReactNode {
   const ratio =
     durationMs > 0 ? Math.min(1, Math.max(0, positionMs / durationMs)) : 0;
-  const fillCount = Math.floor(ratio * widthChars);
-  const fill = '█'.repeat(fillCount);
+  const fillCount = Math.min(
+    widthChars - 1,
+    Math.floor(ratio * widthChars),
+  );
+  const fill = '─'.repeat(fillCount);
   const empty = '─'.repeat(Math.max(0, widthChars - fillCount - 1));
   const current = formatTime(positionMs);
   const total = formatTime(durationMs);
@@ -37,7 +43,7 @@ export function SeekBar({
     <box flexDirection="column">
       <text>
         <span fg={theme.accent}>{fill}</span>
-        <span fg={theme.signal}>●</span>
+        <span fg={theme.signal}>■</span>
         <span fg={theme.cardAlt}>{empty}</span>
       </text>
       <text>
