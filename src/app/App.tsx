@@ -323,14 +323,28 @@ export function App(): React.ReactNode {
 
   const latestSpectrum = useRef<number[] | undefined>(undefined);
   const lastLiveAt = useRef(0);
+  const stallSince = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const timer = setInterval(() => {
       const raw = latestSpectrum.current;
-      if (raw && Date.now() - lastLiveAt.current < 600) {
+      const fresh = raw && Date.now() - lastLiveAt.current < 600;
+      if (fresh && raw) {
+        stallSince.current = undefined;
         const boosted = raw.map((value) => Math.min(1, value * configRef.current.vizGain));
         setViz((previous) => applySpectrum(previous, boosted, vizColumns));
       } else {
+        // Watchdog: a quiet feed while playing means the decoder stalled —
+        // re-prime it at the current position instead of flatlining.
+        if (isPlayingRef.current) {
+          if (stallSince.current === undefined) {
+            stallSince.current = Date.now();
+          } else if (Date.now() - stallSince.current > 2500) {
+            const current = trackRef.current;
+            if (current) feed().start(current.audioPath, positionMsRef.current / 1000);
+            stallSince.current = Date.now();
+          }
+        }
         setViz((previous) => stepViz(previous, vizColumns, Date.now() / 1000, isPlaying));
       }
     }, 66);

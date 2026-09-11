@@ -34,17 +34,19 @@ export function Visualizer({
       const capped =
         !filled && fromBottom <= Math.round(peak * barRows) && peak > 0.02;
       cells.push(
-        <span
-          key={i}
-          fg={capped ? theme.accent : filled ? theme.cardAlt : theme.appBg}
-        >
+        <span key={i} fg={capped ? theme.accent : filled ? theme.cardAlt : theme.appBg}>
           {capped || filled ? '█' : ' '}
         </span>,
       );
       cells.push(<span key={`g${i}`}> </span>);
     }
+    // Row box carries the page background: the absolute layer composites
+    // opaquely, so every cell needs a painted ancestor or it punches a
+    // black hole instead of showing the page behind.
     lines.push(
-      <text key={row}>{cells}</text>,
+      <box key={row} backgroundColor={theme.appBg}>
+        <text>{cells}</text>
+      </box>,
     );
   }
 

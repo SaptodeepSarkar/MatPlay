@@ -148,8 +148,7 @@ export async function sampleCoverTheme(
   if (pixels.length === 0) return fallback;
 
   const byLuminance = [...pixels].sort((a, b) => luminance(a) - luminance(b));
-  const darkest = byLuminance[0] ?? hexToRgb(fallback.appBg);
-  // Hero color must be visible: most saturated pixel within a sane
+  const darkest = byLuminance[0] ?? hexToRgb(fallback.appBg);  // Hero color must be visible: most saturated pixel within a sane
   // brightness band, so near-black reds never become the accent.
   const candidates = pixels.filter((pixel) => {
     const lum = luminance(pixel);
@@ -159,9 +158,15 @@ export async function sampleCoverTheme(
   const vivid = [...pool].sort((a, b) => saturation(b) - saturation(a))[0]
     ?? hexToRgb(fallback.accent);
 
-  const appBg = scale(darkest, 0.55);
-  const card = scale(darkest, 1.15);
-  const cardAlt = scale(darkest, 1.9);
+  // Surfaces must never be pure black: text rows sit directly on appBg,
+  // and anything darker than ~0.06 luminance reads as a black hole.
+  const lifted = (color: RGB, floor: number): RGB => {
+    const lum = luminance(color);
+    return lum < floor ? scale(color, floor / Math.max(0.001, lum)) : color;
+  };
+  const appBg = lifted(scale(darkest, 0.7), 0.06);
+  const card = scale(appBg, 1.7);
+  const cardAlt = scale(appBg, 2.8);
   const hero: RGB = saturation(vivid) > 0.2 ? vivid : hexToRgb(fallback.accent);
   const bright = luminance(hero) < 0.22 ? scale(hero, 1.8) : hero;
   const darkPage = luminance(appBg) < 0.45;

@@ -49,6 +49,9 @@ export class SpectrumFeed {
         'ffmpeg',
         [
           '-v', 'error',
+          // Realtime pacing: without -re the decoder dumps the whole
+          // track in seconds, cava eats it instantly, and the bars die.
+          '-re',
           '-ss', Math.max(0, offsetSec).toFixed(2),
           '-i', audioPath,
           '-map', '0:a',
