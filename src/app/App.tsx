@@ -31,6 +31,7 @@ import { MediaPresence } from '../platform/presence.js';
 import { onShutdown, runShutdown } from './shutdown.js';
 import { configExists, defaultConfig, loadConfig, saveConfig, type AppConfig } from './config.js';
 import { SetupScreen } from '../ui/components/SetupScreen.js';
+import { DiagnosticsPanel } from '../ui/components/DiagnosticsPanel.js';
 import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
 import type { Track } from '../library/types.js';
@@ -157,6 +158,7 @@ export function App(): React.ReactNode {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuIndex, setMenuIndex] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [searchIndex, setSearchIndex] = useState(0);
@@ -656,6 +658,11 @@ export function App(): React.ReactNode {
       return;
     }
 
+    if (diagnosticsOpen) {
+      if (has('escape', 'd', 'D')) setDiagnosticsOpen(false);
+      return;
+    }
+
     // Text input owns every key except navigation while searching.
     if (searchOpen) {
       if (has('escape')) {
@@ -728,6 +735,8 @@ export function App(): React.ReactNode {
       setHelpOpen((previous) => !previous);
     } else if (has('s')) {
       setMenuOpen((previous) => !previous);
+    } else if (has('d', 'D')) {
+      setDiagnosticsOpen((previous) => !previous);
     } else if (has('l')) {
       setLyricsVisible((previous) => !previous);
     } else if (has('/')) {
@@ -793,7 +802,9 @@ export function App(): React.ReactNode {
           <strong>{'  ⚙  '}</strong>
         </text>
         <box flexGrow={1} />
-        <text fg={theme.muted}>{meta.streamLabel}</text>
+        <text fg={library.diagnostics.length > 0 ? theme.signal : theme.muted}>
+          {library.diagnostics.length > 0 ? `⚠ ${library.diagnostics.length} · D DETAILS` : meta.streamLabel}
+        </text>
       </box>
       {audioError ? (
         <box justifyContent="center" backgroundColor={theme.card}>
@@ -863,6 +874,11 @@ export function App(): React.ReactNode {
           left={Math.max(0, Math.floor((width - 40) / 2))}
         >
           <ShortcutsPanel theme={theme} />
+        </box>
+      ) : null}
+      {diagnosticsOpen ? (
+        <box position="absolute" top={Math.max(0, Math.floor((height - 18) / 2))} left={Math.max(0, Math.floor((width - 68) / 2))}>
+          <DiagnosticsPanel diagnostics={library.diagnostics} theme={theme} />
         </box>
       ) : null}
       {searchOpen ? (
