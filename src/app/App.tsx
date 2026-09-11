@@ -23,6 +23,7 @@ import { scanLibrarySync } from '../library/scanLibrary.js';
 import { searchTracks } from '../library/search.js';
 import { buildPlayOrder, stepIndex } from '../playback/queue.js';
 import { execFileSync } from 'node:child_process';
+import { watch } from 'chokidar';
 import type { AudioBackend } from '../playback/AudioBackend.js';
 import { FfplayBackend } from '../playback/FfplayBackend.js';
 import { Mpg123Backend } from '../playback/Mpg123Backend.js';
@@ -96,11 +97,35 @@ export function App(): React.ReactNode {
   };
 
   const musicRoot = process.env.MATPLAY_MUSIC_ROOT ?? config.musicRoot;
-  const library = useMemo(() => scanLibrarySync(musicRoot), [musicRoot]);
+  const [libraryRevision, setLibraryRevision] = useState(0);
+  const [libraryNotice, setLibraryNotice] = useState<string | undefined>();
+  const library = useMemo(() => scanLibrarySync(musicRoot), [musicRoot, libraryRevision]);
   const allTracks = useMemo(
     () => library.playlists.flatMap((playlist) => playlist.tracks),
     [library],
   );
+  useEffect(() => {
+    if (!libraryNotice) return undefined;
+    const timer = setTimeout(() => setLibraryNotice(undefined), 2000);
+    return () => clearTimeout(timer);
+  }, [libraryNotice]);
+  useEffect(() => {
+    if (process.env.MATPLAY_DISABLE_WATCHER === '1') return undefined;
+    let timer: NodeJS.Timeout | undefined;
+    const watcher = watch(musicRoot, { ignoreInitial: true, depth: 3 });
+    const refresh = (): void => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        setLibraryRevision((revision) => revision + 1);
+        setLibraryNotice('LIBRARY UPDATED');
+      }, 250);
+    };
+    watcher.on('add', refresh).on('unlink', refresh).on('addDir', refresh).on('unlinkDir', refresh);
+    return () => {
+      if (timer) clearTimeout(timer);
+      void watcher.close();
+    };
+  }, [musicRoot]);
   const [playlistFilter, setPlaylistFilter] = useState<string | undefined>(() => {
     const saved = loadConfig().lastPlaylist;
     if (saved && library.playlists.some((playlist) => playlist.name === saved)) {
@@ -737,6 +762,9 @@ export function App(): React.ReactNode {
       setMenuOpen((previous) => !previous);
     } else if (has('d', 'D')) {
       setDiagnosticsOpen((previous) => !previous);
+    } else if (has('r')) {
+      setLibraryRevision((revision) => revision + 1);
+      setLibraryNotice('LIBRARY RESCANNED');
     } else if (has('l')) {
       setLyricsVisible((previous) => !previous);
     } else if (has('/')) {
@@ -803,7 +831,7 @@ export function App(): React.ReactNode {
         </text>
         <box flexGrow={1} />
         <text fg={library.diagnostics.length > 0 ? theme.signal : theme.muted}>
-          {library.diagnostics.length > 0 ? `⚠ ${library.diagnostics.length} · D DETAILS` : meta.streamLabel}
+          {libraryNotice ?? (library.diagnostics.length > 0 ? `⚠ ${library.diagnostics.length} · D DETAILS` : meta.streamLabel)}
         </text>
       </box>
       {audioError ? (

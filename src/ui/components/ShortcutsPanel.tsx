@@ -19,6 +19,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ['L', 'Toggle lyrics'],
   ['S', 'Settings menu'],
   ['D', 'Library diagnostics'],
+  ['R', 'Rescan library'],
   ['?', 'This panel'],
   ['q', 'Quit'],
 ];
