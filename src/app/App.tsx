@@ -33,6 +33,7 @@ import { onShutdown, runShutdown } from './shutdown.js';
 import { configExists, defaultConfig, loadConfig, saveConfig, type AppConfig } from './config.js';
 import { SetupScreen } from '../ui/components/SetupScreen.js';
 import { DiagnosticsPanel } from '../ui/components/DiagnosticsPanel.js';
+import { SettingsButton } from '../ui/components/SettingsButton.js';
 import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
 import type { Track } from '../library/types.js';
@@ -880,23 +881,15 @@ export function App(): React.ReactNode {
       </box>
 
       <box flexDirection="row" alignItems="center" paddingX={2} paddingTop={1} backgroundColor="transparent">
-        <box
-          width={5}
-          height={3}
-          flexDirection="column"
-          backgroundColor="transparent"
-          justifyContent="center"
-          alignItems="center"
-          onMouseDown={() => {
+        <SettingsButton
+          signal={theme.signal}
+          ink={theme.appBg}
+          onActivate={() => {
             const opening = !menuOpen;
             closeOverlays();
             setMenuOpen(opening);
           }}
-        >
-          <text fg={theme.signal}>{' ▄▄▄ '}</text>
-          <text fg={theme.appBg} bg={theme.signal}><strong>{'  \uf013  '}</strong></text>
-          <text fg={theme.signal}>{' ▀▀▀ '}</text>
-        </box>
+        />
         <box flexGrow={1} />
         <text fg={library.diagnostics.length > 0 ? theme.signal : theme.muted}>
           {libraryNotice ?? (library.diagnostics.length > 0 ? `⚠ ${library.diagnostics.length} · D DETAILS` : meta.streamLabel)}
