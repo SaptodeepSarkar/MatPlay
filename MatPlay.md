@@ -8,17 +8,18 @@ MatPlay should run inside the terminal, but visually feel closer to a polished G
 
 ## Research Verdict
 
-Use **Ink + React** for the TUI. Ink gives React-style components and Flexbox-like terminal layouts, which is the best fit for making a TUI feel like a GUI/Material UI app rather than an old ncurses screen.
+Use **OpenTUI** + React 19 (`@opentui/core`, `@opentui/react`) for the TUI.
+OpenTUI renders natively in Kitty/Sixel/Unicode block terminals with React
+component model, which is the best fit for a Material UI-inspired terminal app.
 
-Do **not** use MPD, Mopidy, or any external music server. The app should own its own scanning, queue, playback state, config, and UI.
+Do **not** use MPD, Mopidy, or any external music server. The app owns its
+own scanning, queue, playback state, config, and UI.
 
-Important technical truth: "no MPD server" is realistic. "No dependencies at all" is not realistic for MP3 playback in TypeScript. Node.js can read files, but it does not natively decode MP3 or send decoded audio to ALSA/Pulse/PipeWire/CoreAudio/WASAPI as a finished music player. The project needs either:
-
-- native/audio npm libraries,
-- a bundled decoder/playback backend,
-- or an isolated fallback audio adapter.
-
-The correct architecture is to hide playback behind an `AudioBackend` interface so the UI and library scanner do not care how audio is actually played.
+Important technical truth: "no MPD server" is realistic. "No dependencies at
+all" is not realistic for MP3 playback in TypeScript. Node.js can read files,
+but it does not natively decode MP3 or send decoded audio to ALSA/Pulse/
+PipeWire/CoreAudio/WASAPI. Playback is hidden behind an `AudioBackend`
+interface using system decoders (`mpg123` for gapless, `ffplay` as fallback).
 
 ## Hard Requirements
 
@@ -40,19 +41,18 @@ The correct architecture is to hide playback behind an `AudioBackend` interface 
 
 Use dependencies only where they solve real technical problems.
 
-Suggested packages:
+Actual packages used:
 
-- `ink`
-- `react`
-- `ink-text-input` or a custom Ink input component
-- `zod`
-- `music-metadata`
-- `chokidar`
-- `audio-decode` or equivalent decoder package
-- `speaker` or equivalent PCM output package
-- `tsx`
-- `typescript`
-- `vitest`
+- `@opentui/core` — terminal renderer
+- `@opentui/react` — React integration for OpenTUI
+- `react` — UI components
+- `zod` — config validation
+- `music-metadata` — audio metadata extraction
+- `chokidar` — file change watching
+- `mpris-service` — desktop media keys
+- `tsx` — TypeScript runner
+- `typescript` — compiler
+- `vitest` — test runner
 
 Avoid random dependencies for tiny utilities. Use Node standard library for filesystem, path handling, and simple data transforms.
 
@@ -323,43 +323,32 @@ Settings screen must allow:
 
 ## Project Structure
 
-Use this structure:
+Use this structure (actual implementation):
 
 ```txt
 src/
-  main.tsx
+  main.tsx            # renderer entry + shutdown hooks on signals
   app/
-    App.tsx
-    state.ts
-    config.ts
+    App.tsx           # now-playing screen + overlays + transport
+    config.ts         # zod config (load/save/defaults)
+    shutdown.ts       # process cleanup registry
   ui/
-    components/
-      Layout.tsx
-      Sidebar.tsx
-      TrackList.tsx
-      NowPlaying.tsx
-      LyricsPanel.tsx
-      BottomPlayerBar.tsx
-      HelpModal.tsx
-      SetupWizard.tsx
-      SettingsView.tsx
-    theme.ts
-  library/
-    scanLibrary.ts
-    types.ts
-    diagnostics.ts
-  playback/
-    Player.ts
-    AudioBackend.ts
-    NodeAudioBackend.ts
-  lyrics/
-    parseLyrics.ts
-  utils/
-    paths.ts
-    ids.ts
-test/
-  scanLibrary.test.ts
-  parseLyrics.test.ts
+    palette.ts        # ffmpeg sampling + theme fade
+    stitchTheme.ts    # StitchTheme tokens
+    visualizerEngine.ts
+    components/       # AlbumArtwork, TrackMetadata, SeekBar,
+                      # PlaybackControls, VolumeMeter, LyricsPanel,
+                      # Visualizer, SettingsMenu, ShortcutsPanel,
+                      # SearchOverlay, PlaylistOverlay, QueueOverlay
+  library/            # scanner, search, types, diagnostics
+  playback/           # AudioBackend, Mpg123Backend, FfplayBackend,
+                      # SpectrumFeed (private fifo), cava client
+  lyrics/             # lrc/txt parser
+  platform/           # MPRIS presence, system integration
+  utils/              # stable ids, path helpers
+test/                 # vitest suite (30 tests)
+stitch/               # Stitch design reference + sample art
+installer/            # install.sh (linux/macOS), install.ps1 (windows)
 ```
 
 ## State Design
