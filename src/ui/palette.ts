@@ -231,7 +231,8 @@ export function themeFromPixels(pixels: RGB[], fallback: StitchTheme): StitchThe
   const appBg = darkCoverSurface(backgroundSeed);
   const card = mixRgb(appBg, [255, 255, 255], 0.08);
   const cardAlt = mixRgb(appBg, [255, 255, 255], 0.17);
-  const hero: RGB = saturation(vivid) > 0.2 ? vivid : hexToRgb(fallback.accent);
+  const brightest = byLuminance[byLuminance.length - 1];
+  const hero: RGB = saturation(vivid) > 0.2 ? vivid : brightest;
   const bright = perceivedLuminance(hero) < 0.22 ? scale(hero, 1.8) : hero;
   const darkPage = relativeLuminance(appBg) < 0.18;
   const text: RGB = darkPage ? hexToRgb('#f6e9d2') : hexToRgb('#1a0c08');

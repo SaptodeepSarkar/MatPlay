@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { contrastRatio, hexToRgb, lerpTheme, rgbToHex, themeFromPixels } from '../src/ui/palette.js';
 import { KALYANI_COVER_THEME, stitchFallbackTheme } from '../src/ui/stitchTheme.js';
 
+function saturation([r, g, b]: [number, number, number]): number {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  return max === 0 ? 0 : (max - min) / max;
+}
+
 describe('palette helpers', () => {
   it('round-trips hex colors', () => {
     expect(rgbToHex(hexToRgb('#d9ab4e'))).toBe('#d9ab4e');
@@ -47,5 +53,18 @@ describe('palette helpers', () => {
     ], KALYANI_COVER_THEME);
     const [r, , b] = hexToRgb(theme.appBg);
     expect(r).toBeGreaterThan(b);
+  });
+
+  it('keeps neutral cover accents in the cover hue family', () => {
+    const theme = themeFromPixels([
+      [192, 178, 150],
+      [139, 119, 101],
+      [45, 45, 45],
+      [28, 28, 28],
+    ], KALYANI_COVER_THEME);
+    // Accent must NOT inherit the fallback (previous song's) accent.
+    expect(theme.accent).not.toBe(KALYANI_COVER_THEME.accent);
+    // For a neutral cover, the accent should be low-saturation (warm gray/beige).
+    expect(saturation(hexToRgb(theme.accent))).toBeLessThan(0.3);
   });
 });
