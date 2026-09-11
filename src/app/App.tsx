@@ -162,6 +162,7 @@ export function App(): React.ReactNode {
   const [audioError, setAudioError] = useState<string | undefined>();
   const [positionMs, setPositionMs] = useState(0);
   const [volume, setVolume] = useState(config.volume);
+  const lastAudibleVolume = useRef(config.volume > 0 ? config.volume : 0.62);
   const [shuffle, setShuffle] = useState(false);
   const [loopList, setLoopList] = useState(true);
   const [loopSingle, setLoopSingle] = useState(false);
@@ -394,6 +395,7 @@ export function App(): React.ReactNode {
   }, [isPlaying]);
 
   useEffect(() => {
+    if (volume > 0) lastAudibleVolume.current = volume;
     void backend().setVolume(volume);
     updateConfig({ volume });
     presenceRef.current?.updateFlags(volume, shuffle, loopSingle, loopList);
@@ -811,7 +813,7 @@ export function App(): React.ReactNode {
     } else if (has('-', 'minus')) {
       setVolume((previous) => Math.max(0, previous - 0.05));
     } else if (has('m', 'mute')) {
-      setVolume((previous) => (previous > 0 ? 0 : 0.62));
+      setVolume((previous) => (previous > 0 ? 0 : lastAudibleVolume.current));
     } else if (has('1')) {
       setShuffle((previous) => !previous);
     } else if (has('2')) {
