@@ -17,6 +17,7 @@ import type { AudioBackend } from './AudioBackend.js';
  */
 export class Mpg123Backend implements AudioBackend {
   onEnded: (() => void) | undefined;
+  onError: ((message: string) => void) | undefined;
 
   private proc: ChildProcess | undefined;
   private buffer = '';
@@ -45,6 +46,7 @@ export class Mpg123Backend implements AudioBackend {
       child.on('error', () => {
         this.available = false;
         this.proc = undefined;
+        this.onError?.('mpg123 could not start. Install mpg123 or ffplay.');
       });
       child.on('exit', () => {
         if (this.proc === child) {
@@ -62,6 +64,7 @@ export class Mpg123Backend implements AudioBackend {
       return true;
     } catch {
       this.available = false;
+      this.onError?.('mpg123 could not start. Install mpg123 or ffplay.');
       return false;
     }
   }

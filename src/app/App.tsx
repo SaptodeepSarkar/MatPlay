@@ -44,7 +44,10 @@ const FALLBACK_COVER = fileURLToPath(
   new URL('../../stitch/kalyani-cover.jpg', import.meta.url),
 );
 
-type PlayerBackend = AudioBackend & { onEnded: (() => void) | undefined };
+type PlayerBackend = AudioBackend & {
+  onEnded: (() => void) | undefined;
+  onError: ((message: string) => void) | undefined;
+};
 
 let preferMpg123: boolean | undefined;
 /** mpg123 remote control (gapless) when present, ffplay otherwise. */
@@ -127,6 +130,7 @@ export function App(): React.ReactNode {
   const [theme, setTheme] = useState<StitchTheme>(KALYANI_COVER_THEME);
   // Resume paused on the last played song; never autoplay on startup.
   const [isPlaying, setIsPlaying] = useState(false);
+  const [audioError, setAudioError] = useState<string | undefined>();
   const [positionMs, setPositionMs] = useState(0);
   const [volume, setVolume] = useState(config.volume);
   const [shuffle, setShuffle] = useState(false);
@@ -203,6 +207,10 @@ export function App(): React.ReactNode {
         detectBackend() === 'mpg123' ? new Mpg123Backend() : new FfplayBackend();
       instance.onEnded = () => {
         trackEndRef.current();
+      };
+      instance.onError = (message) => {
+        setAudioError(message);
+        setIsPlaying(false);
       };
       backendRef.current = instance;
     }
@@ -338,6 +346,7 @@ export function App(): React.ReactNode {
     if (!track) return;
     const current = trackRef.current;
     if (isPlaying) {
+      setAudioError(undefined);
       void backend().play();
       if (current) feed().start(current.audioPath, positionMsRef.current / 1000);
     } else {
@@ -738,6 +747,11 @@ export function App(): React.ReactNode {
         <box flexGrow={1} />
         <text fg={theme.muted}>{meta.streamLabel}</text>
       </box>
+      {audioError ? (
+        <box justifyContent="center" backgroundColor={theme.card}>
+          <text fg={theme.signal}><strong>AUDIO ERROR:</strong> {audioError}</text>
+        </box>
+      ) : null}
 
       <box flexGrow={1} justifyContent="center" alignItems="center">
         <box flexDirection="column" width={contentWidth} gap={1}>

@@ -16,6 +16,7 @@ import type { AudioBackend } from './AudioBackend.js';
  */
 export class FfplayBackend implements AudioBackend {
   onEnded: (() => void) | undefined;
+  onError: ((message: string) => void) | undefined;
 
   private proc: ChildProcess | undefined;
   private killedByUs = false;
@@ -128,6 +129,8 @@ export class FfplayBackend implements AudioBackend {
       // ffplay missing: degrade to silent timer mode.
       this.available = false;
       this.proc = undefined;
+      this.playing = false;
+      this.onError?.('ffplay could not start. Check ffmpeg and your audio device.');
     });
     child.on('exit', () => {
       if (this.proc !== child) return;
