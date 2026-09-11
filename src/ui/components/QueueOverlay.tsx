@@ -24,7 +24,7 @@ export function QueueOverlay({
   playlistName,
   theme,
 }: QueueOverlayProps): React.ReactNode {
-  const start = Math.max(0, Math.min(currentPos - 3, order.length - WINDOW));
+  const start = Math.max(0, Math.min(selectedIndex - 3, order.length - WINDOW));
   const visible = order.slice(start, start + WINDOW);
 
   return (

@@ -20,6 +20,9 @@ export function SearchOverlay({
   onQuery,
 }: SearchOverlayProps): React.ReactNode {
   const inputRef = useRef<InputRenderable | null>(null);
+  const windowSize = 8;
+  const start = Math.max(0, Math.min(selectedIndex - 3, results.length - windowSize));
+  const visibleResults = results.slice(start, start + windowSize);
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -43,13 +46,16 @@ export function SearchOverlay({
         {query ? `${results.length} match${results.length === 1 ? '' : 'es'}` : 'type to search'}
       </text>
       <box flexDirection="column">
-        {results.slice(0, 8).map((track, index) => (
+        {visibleResults.map((track, offset) => {
+          const index = start + offset;
+          return (
           <box key={track.id} backgroundColor={index === selectedIndex ? theme.accent : undefined}>
             <text fg={index === selectedIndex ? theme.accentInk : theme.text}>
               {index === selectedIndex ? <strong>{`▸ ${track.title} — ${track.artist}`}</strong> : `  ${track.title} — ${track.artist}`}
             </text>
           </box>
-        ))}
+          );
+        })}
         {results.length === 0 && query ? (
           <text fg={theme.muted}>No matches in this library.</text>
         ) : null}
