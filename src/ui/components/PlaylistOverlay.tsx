@@ -55,7 +55,7 @@ export function PlaylistOverlay({
           </box>
         ))}
       </box>
-      <text fg={theme.muted}>↑↓ move · ENTER play · ESC close</text>
+      <text fg={theme.muted}>↑↓ move · ENTER select · ESC close</text>
     </box>
   );
 }

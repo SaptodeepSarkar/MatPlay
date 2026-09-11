@@ -531,6 +531,7 @@ export function App(): React.ReactNode {
     if (index >= 0) {
       setQueueIndex(index);
       setPositionMs(0);
+      setIsPlaying(true);
     }
     setSearchOpen(false);
     setQuery('');
