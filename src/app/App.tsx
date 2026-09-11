@@ -580,7 +580,17 @@ export function App(): React.ReactNode {
     setBrowseIndex(0);
   };
 
+  const closeOverlays = (): void => {
+    setMenuOpen(false);
+    setHelpOpen(false);
+    setDiagnosticsOpen(false);
+    setSearchOpen(false);
+    setBrowseOpen(false);
+    setQueueOpen(false);
+  };
+
   const openQueue = (): void => {
+    closeOverlays();
     setQueueSel(Math.max(0, order.indexOf(queueIndex)));
     setQueueOpen(true);
   };
@@ -757,22 +767,31 @@ export function App(): React.ReactNode {
     } else if (has('space', ' ')) {
       setIsPlaying((previous) => !previous);
     } else if (has('?')) {
-      setHelpOpen((previous) => !previous);
+      const opening = !helpOpen;
+      closeOverlays();
+      setHelpOpen(opening);
     } else if (has('s')) {
-      setMenuOpen((previous) => !previous);
+      const opening = !menuOpen;
+      closeOverlays();
+      setMenuOpen(opening);
     } else if (has('d', 'D')) {
-      setDiagnosticsOpen((previous) => !previous);
+      const opening = !diagnosticsOpen;
+      closeOverlays();
+      setDiagnosticsOpen(opening);
     } else if (has('r')) {
       setLibraryRevision((revision) => revision + 1);
       setLibraryNotice('LIBRARY RESCANNED');
     } else if (has('l')) {
       setLyricsVisible((previous) => !previous);
     } else if (has('/')) {
+      closeOverlays();
       setSearchIndex(0);
       setSearchOpen(true);
     } else if (has('b')) {
+      const opening = !browseOpen;
+      closeOverlays();
       setBrowseIndex(0);
-      setBrowseOpen((previous) => !previous);
+      setBrowseOpen(opening);
     } else if (has('n')) {
       next();
     } else if (has('p')) {
