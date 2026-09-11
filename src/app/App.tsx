@@ -394,7 +394,7 @@ export function App(): React.ReactNode {
   useEffect(() => {
     void backend().setVolume(volume);
     updateConfig({ volume });
-    presenceRef.current?.updateFlags(volume, shuffle, loopList, loopSingle);
+    presenceRef.current?.updateFlags(volume, shuffle, loopSingle, loopList);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [volume, shuffle, loopList, loopSingle]);
 
