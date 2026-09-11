@@ -127,6 +127,7 @@ export function App(): React.ReactNode {
     };
   }, [musicRoot]);
   const [playlistFilter, setPlaylistFilter] = useState<string | undefined>(() => {
+    if (process.env.MATPLAY_MUSIC_ROOT) return undefined;
     const saved = loadConfig().lastPlaylist;
     if (saved && library.playlists.some((playlist) => playlist.name === saved)) {
       return saved;
@@ -139,6 +140,10 @@ export function App(): React.ReactNode {
   }, [library, allTracks, playlistFilter]);
 
   const [queueIndex, setQueueIndex] = useState(() => {
+    if (process.env.MATPLAY_MUSIC_ROOT) {
+      const kalyani = queue.findIndex((track) => /kalyani/i.test(track.title));
+      return kalyani >= 0 ? kalyani : 0;
+    }
     const savedId = loadConfig().lastTrackId;
     if (savedId) {
       const index = queue.findIndex((track) => track.id === savedId);
