@@ -219,9 +219,7 @@ export function App(): React.ReactNode {
   const handleTrackEnd = (): void => {
     if (!track) return;
     if (loopSingle) {
-      setPositionMs(0);
-      void backend().seek(0);
-      feed().start(track.audioPath, 0);
+      seekTo(0);
       return;
     }
     const target = stepIndex(orderRef.current, queueIndex, 1, loopList);
@@ -357,7 +355,7 @@ export function App(): React.ReactNode {
     const feeder = feedRef.current;
     void SpectrumFeed.ensureFifo();
     return () => {
-      void player.stop();
+      void player.destroy();
       spectrum?.stop();
       feeder?.stop();
     };
@@ -448,9 +446,16 @@ export function App(): React.ReactNode {
   const seekTo = (ms: number): void => {
     const clamped = Math.max(0, ms);
     setPositionMs(clamped);
-    void backend().seek(clamped);
     presenceRef.current?.reportSeek(clamped);
     const current = trackRef.current;
+    void (async () => {
+      await backend().seek(clamped);
+      // Resurrect-after-seek: a spent decoder reloads paused, so resume
+      // here when the UI transport is playing.
+      if (isPlayingRef.current) {
+        await backend().play();
+      }
+    })();
     if (current && isPlayingRef.current) {
       feed().start(current.audioPath, clamped / 1000);
     }
@@ -534,7 +539,7 @@ export function App(): React.ReactNode {
   useEffect(() => {
     return onShutdown(() => {
       try {
-        void backendRef.current?.stop();
+        void backendRef.current?.destroy();
       } catch {
         // Ignore.
       }

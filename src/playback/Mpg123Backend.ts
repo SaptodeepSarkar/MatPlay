@@ -72,17 +72,43 @@ export class Mpg123Backend implements AudioBackend {
     this.endedSinceLoad = false;
     this.lastPath = track.audioPath;
     this.durationMs = track.durationMs;
-    try {
-      const meta = await parseFile(track.audioPath, { duration: true });
-      if (typeof meta.format.duration === 'number' && Number.isFinite(meta.format.duration)) {
-        this.durationMs = Math.round(meta.format.duration * 1000);
+    const tags = (async () => {
+      try {
+        const meta = await parseFile(track.audioPath, { duration: true });
+        if (typeof meta.format.duration === 'number' && Number.isFinite(meta.format.duration)) {
+          this.durationMs = Math.round(meta.format.duration * 1000);
+        }
+      } catch {
+        // Duration arrives live from @F lines once playing.
       }
-    } catch {
-      // Duration arrives live from @F lines once playing.
+    })();
+    if (!this.ensure()) {
+      await tags;
+      return;
     }
-    if (!this.ensure()) return;
     this.expectStop = true;
+    const acked = this.waitForLoadAck();
     this.send(`LOADPAUSED ${track.audioPath}`);
+    await Promise.all([tags, acked]);
+  }
+
+  /** Resolve when the decoder acknowledges the load (@P 1/@P 2). */
+  private loadWaiters: Array<() => void> = [];
+
+  private waitForLoadAck(): Promise<void> {
+    return new Promise((resolve) => {
+      const timer = setTimeout(resolve, 2000);
+      this.loadWaiters.push(() => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+  }
+
+  private flushLoadWaiters(): void {
+    const waiters = this.loadWaiters;
+    this.loadWaiters = [];
+    for (const resolve of waiters) resolve();
   }
 
   async play(): Promise<void> {
@@ -113,6 +139,13 @@ export class Mpg123Backend implements AudioBackend {
     const clamped = Math.max(0, ms);
     this.positionMs = clamped;
     if (!this.ensure()) return;
+    if (this.endedSinceLoad) {
+      // A spent decoder ignores JUMP: reload paused at the target, then
+      // let play() resume from there.
+      this.expectStop = true;
+      if (this.lastPath) this.send(`LOADPAUSED ${this.lastPath}`);
+      this.endedSinceLoad = false;
+    }
     this.send(`JUMP ${(clamped / 1000).toFixed(2)}s`);
   }
 
@@ -129,6 +162,19 @@ export class Mpg123Backend implements AudioBackend {
 
   async getDuration(): Promise<number | undefined> {
     return this.durationMs;
+  }
+
+  async destroy(): Promise<void> {
+    this.playing = false;
+    const child = this.proc;
+    this.proc = undefined;
+    if (child && !child.killed && child.exitCode === null) {
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        // Already gone.
+      }
+    }
   }
 
   private send(command: string): void {
@@ -166,8 +212,13 @@ export class Mpg123Backend implements AudioBackend {
     } else if (line === '@P 2') {
       this.playing = true;
       this.endedSinceLoad = false;
+      // A fresh play cycle disarms any stale stop expectation, so a later
+      // natural EOF is reported instead of swallowed.
+      this.expectStop = false;
+      this.flushLoadWaiters();
     } else if (line === '@P 1') {
       this.playing = false;
+      this.flushLoadWaiters();
     } else if (line === '@P 0') {
       const wasPlaying = this.playing;
       this.playing = false;

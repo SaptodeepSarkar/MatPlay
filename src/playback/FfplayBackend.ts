@@ -92,6 +92,11 @@ export class FfplayBackend implements AudioBackend {
     return this.durationMs;
   }
 
+  async destroy(): Promise<void> {
+    this.playing = false;
+    this.stopProcess();
+  }
+
   private readPosition(): number {
     if (!this.playing) return this.baseMs;
     return this.baseMs + (Date.now() - this.startedAt);

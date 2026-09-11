@@ -14,4 +14,6 @@ export interface AudioBackend {
   setVolume(volume: number): Promise<void>;
   getPosition(): Promise<number>;
   getDuration(): Promise<number | undefined>;
+  /** Kill the underlying process. stop() only halts output. */
+  destroy(): Promise<void>;
 }
