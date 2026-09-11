@@ -34,6 +34,7 @@ import { configExists, defaultConfig, loadConfig, saveConfig, type AppConfig } f
 import { SetupScreen } from '../ui/components/SetupScreen.js';
 import { DiagnosticsPanel } from '../ui/components/DiagnosticsPanel.js';
 import { SettingsButton } from '../ui/components/SettingsButton.js';
+import { resetTerminalBackground, syncTerminalBackground } from '../ui/terminalBackground.js';
 import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
 import type { Track } from '../library/types.js';
@@ -227,6 +228,16 @@ export function App(): React.ReactNode {
 
   const themeRef = useRef(theme);
   themeRef.current = theme;
+  useEffect(() => {
+    syncTerminalBackground(theme.appBg);
+  }, [theme.appBg]);
+  useEffect(() => {
+    const unregister = onShutdown(resetTerminalBackground);
+    return () => {
+      unregister();
+      resetTerminalBackground();
+    };
+  }, []);
   const fadeTimer = useRef<NodeJS.Timeout | undefined>(undefined);
   const paletteCache = useRef(new Map<string, StitchTheme>());
   const metaCache = useRef(new Map<string, TrackMeta>());
