@@ -32,7 +32,8 @@ describe('now playing mock', () => {
     });
     const frame = setup.captureCharFrame();
     expect(frame).toContain('KALYANI');
-    expect(frame).toContain('PLAYING');
+    // Resume-paused: no autoplay on startup.
+    expect(frame).toContain('PAUSED');
     expect(frame).toContain('ARJN');
     setup.renderer.destroy();
   });

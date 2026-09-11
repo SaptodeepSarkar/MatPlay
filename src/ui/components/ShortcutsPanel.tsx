@@ -16,6 +16,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ['3', 'Toggle loop single'],
   ['+ −', 'Volume up / down'],
   ['M', 'Mute'],
+  ['L', 'Toggle lyrics'],
   ['S', 'Settings menu'],
   ['?', 'This panel'],
   ['q', 'Quit'],

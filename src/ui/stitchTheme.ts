@@ -20,6 +20,8 @@ export type StitchTheme = {
   accentInk: string;
   /** Tactical signal: playhead knob, live dots only. */
   signal: string;
+  /** Complement of the accent: settings dial and rare highlights. */
+  complement: string;
 };
 
 /** Static fallback when no cover art is available. */
@@ -32,6 +34,7 @@ export const stitchFallbackTheme: StitchTheme = {
   accent: '#0a0a0a',
   accentInk: '#f4f4f2',
   signal: '#ff3e00',
+  complement: '#0a6076',
 };
 
 /** Palette sampled from cover art (dominant bg, surface, text, hero, signal). */
@@ -44,6 +47,7 @@ export type CoverPalette = {
   accent: string;
   accentInk: string;
   signal: string;
+  complement: string;
 };
 
 /**
@@ -64,4 +68,5 @@ export const KALYANI_COVER_THEME: StitchTheme = themeFromCoverArt({
   accent: '#d9ab4e',
   accentInk: '#2a0d05',
   signal: '#ff5a00',
+  complement: '#4e9ed9',
 });

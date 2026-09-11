@@ -4,6 +4,8 @@ export type VisualizerProps = {
   levels: number[];
   peaks: number[];
   rows: number;
+  /** Fraction of `rows` bars may never exceed. Configurable limiter. */
+  maxHeight: number;
   theme: StitchTheme;
 };
 
@@ -16,9 +18,11 @@ export function Visualizer({
   levels,
   peaks,
   rows,
+  maxHeight,
   theme,
 }: VisualizerProps): React.ReactNode {
   const lines: React.ReactNode[] = [];
+  const barRows = Math.max(1, Math.floor(rows * Math.min(1, Math.max(0, maxHeight))));
 
   for (let row = 0; row < rows; row++) {
     const fromBottom = rows - 1 - row;
@@ -26,9 +30,9 @@ export function Visualizer({
     for (let i = 0; i < levels.length; i++) {
       const level = levels[i] ?? 0;
       const peak = peaks[i] ?? 0;
-      const filled = fromBottom < Math.round(level * rows);
+      const filled = fromBottom < Math.round(level * barRows);
       const capped =
-        !filled && fromBottom <= Math.round(peak * rows) && peak > 0.02;
+        !filled && fromBottom <= Math.round(peak * barRows) && peak > 0.02;
       cells.push(
         <span
           key={i}

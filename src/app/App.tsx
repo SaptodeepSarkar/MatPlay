@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react';
 import { fileURLToPath } from 'node:url';
-import os from 'node:os';
-import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { KALYANI_COVER_THEME, type StitchTheme } from '../ui/stitchTheme.js';
 import { lerpTheme, sampleCoverTheme } from '../ui/palette.js';
 import { AlbumArtwork } from '../ui/components/AlbumArtwork.js';
@@ -15,21 +14,23 @@ import { ShortcutsPanel } from '../ui/components/ShortcutsPanel.js';
 import { SearchOverlay } from '../ui/components/SearchOverlay.js';
 import { PlaylistOverlay } from '../ui/components/PlaylistOverlay.js';
 import { QueueOverlay } from '../ui/components/QueueOverlay.js';
+import { LyricsPanel } from '../ui/components/LyricsPanel.js';
 import { Visualizer } from '../ui/components/Visualizer.js';
 import { stepViz, applySpectrum, type VizState } from '../ui/visualizerEngine.js';
 import { CavaSpectrum } from '../playback/spectrum.js';
+import { SpectrumFeed, spectrumFifoPath } from '../playback/spectrumFeed.js';
 import { scanLibrarySync } from '../library/scanLibrary.js';
 import { searchTracks } from '../library/search.js';
 import { FfplayBackend } from '../playback/FfplayBackend.js';
 import { loadTrackMeta, metaFromFolder, type TrackMeta } from '../playback/trackMeta.js';
+import { loadConfig, saveConfig, type AppConfig } from './config.js';
+import { parseLyrics } from '../lyrics/parseLyrics.js';
+import type { LyricLine } from '../library/types.js';
 import type { Track } from '../library/types.js';
 
-const MUSIC_ROOT =
-  process.env.MATPLAY_MUSIC_ROOT ?? path.join(os.homedir(), 'Music', 'Spotify');
 const SEEK_WIDTH = 44;
 const CONTENT_WIDTH = 28 + 3 + SEEK_WIDTH;
 const RESTART_THRESHOLD_MS = 3000;
-const VIZ_GAIN = 1.6;
 const FADE_STEPS = 18;
 const FADE_INTERVAL_MS = 55;
 
@@ -43,27 +44,60 @@ export function App(): React.ReactNode {
   const vizColumns = Math.max(16, Math.floor(width / 2));
   const vizRows = Math.max(8, height);
 
-  const library = useMemo(() => scanLibrarySync(MUSIC_ROOT), []);
+  const [config, setConfig] = useState<AppConfig>(() => loadConfig());
+  const configRef = useRef(config);
+  const saveTimer = useRef<NodeJS.Timeout | undefined>(undefined);
+  const saveSoon = (): void => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveConfig(configRef.current);
+    }, 800);
+  };
+  const updateConfig = (patch: Partial<AppConfig>): void => {
+    setConfig((previous) => {
+      const next = { ...previous, ...patch };
+      configRef.current = next;
+      return next;
+    });
+    saveSoon();
+  };
+
+  const musicRoot = process.env.MATPLAY_MUSIC_ROOT ?? config.musicRoot;
+  const library = useMemo(() => scanLibrarySync(musicRoot), [musicRoot]);
   const allTracks = useMemo(
     () => library.playlists.flatMap((playlist) => playlist.tracks),
     [library],
   );
-  const [playlistFilter, setPlaylistFilter] = useState<string | undefined>(undefined);
+  const [playlistFilter, setPlaylistFilter] = useState<string | undefined>(() => {
+    const saved = loadConfig().lastPlaylist;
+    if (saved && library.playlists.some((playlist) => playlist.name === saved)) {
+      return saved;
+    }
+    return undefined;
+  });
   const queue = useMemo(() => {
     if (!playlistFilter) return allTracks;
     return library.playlists.find((playlist) => playlist.name === playlistFilter)?.tracks ?? [];
   }, [library, allTracks, playlistFilter]);
 
   const [queueIndex, setQueueIndex] = useState(() => {
-    const kalyani = allTracks.findIndex((track) => /kalyani/i.test(track.title));
+    const savedId = loadConfig().lastTrackId;
+    if (savedId) {
+      const index = queue.findIndex((track) => track.id === savedId);
+      if (index >= 0) return index;
+    }
+    const kalyani = queue.findIndex((track) => /kalyani/i.test(track.title));
     return kalyani >= 0 ? kalyani : 0;
   });
   const track: Track | undefined = queue[queueIndex];
+  const trackRef = useRef(track);
+  trackRef.current = track;
 
   const [theme, setTheme] = useState<StitchTheme>(KALYANI_COVER_THEME);
-  const [isPlaying, setIsPlaying] = useState(true);
+  // Resume paused on the last played song; never autoplay on startup.
+  const [isPlaying, setIsPlaying] = useState(false);
   const [positionMs, setPositionMs] = useState(0);
-  const [volume, setVolume] = useState(0.62);
+  const [volume, setVolume] = useState(config.volume);
   const [shuffle, setShuffle] = useState(false);
   const [loopList, setLoopList] = useState(true);
   const [loopSingle, setLoopSingle] = useState(false);
@@ -76,6 +110,8 @@ export function App(): React.ReactNode {
   const [browseIndex, setBrowseIndex] = useState(0);
   const [queueOpen, setQueueOpen] = useState(false);
   const [queueSel, setQueueSel] = useState(0);
+  const [lyrics, setLyrics] = useState<LyricLine[]>([]);
+  const [lyricsVisible, setLyricsVisible] = useState(true);
   const [meta, setMeta] = useState<TrackMeta>(() =>
     track ? metaFromFolder(track, FALLBACK_COVER) : {
       title: 'No tracks found',
@@ -124,6 +160,12 @@ export function App(): React.ReactNode {
     return backendRef.current;
   };
 
+  const feedRef = useRef<SpectrumFeed | undefined>(undefined);
+  const feed = (): SpectrumFeed => {
+    if (!feedRef.current) feedRef.current = new SpectrumFeed();
+    return feedRef.current;
+  };
+
   const goTo = (index: number): void => {
     if (queue.length === 0) return;
     setQueueIndex(((index % queue.length) + queue.length) % queue.length);
@@ -137,6 +179,7 @@ export function App(): React.ReactNode {
     if (loopSingle) {
       setPositionMs(0);
       void backend().seek(0);
+      feed().start(track.audioPath, 0);
       return;
     }
     if (queueIndex < queue.length - 1) {
@@ -150,11 +193,13 @@ export function App(): React.ReactNode {
   const trackEndRef = useRef(handleTrackEnd);
   trackEndRef.current = handleTrackEnd;
 
-  // Load tags/cover/audio/palette whenever the queue position changes.
+  // Load tags/cover/audio/palette/lyrics whenever the queue position changes.
   useEffect(() => {
     if (!track) return undefined;
     let cancelled = false;
     setMeta(metaFromFolder(track, FALLBACK_COVER));
+    setLyrics([]);
+    updateConfig({ lastTrackId: track.id, lastPlaylist: track.playlist });
     void (async () => {
       const enriched = await loadTrackMeta(track, FALLBACK_COVER);
       if (cancelled) return;
@@ -168,10 +213,19 @@ export function App(): React.ReactNode {
         paletteCache.current.set(enriched.coverSrc, sampled);
         fadeTo(sampled);
       }
+      if (track.lyricsPath) {
+        try {
+          const content = await readFile(track.lyricsPath, 'utf8');
+          if (!cancelled) setLyrics(parseLyrics(content));
+        } catch {
+          if (!cancelled) setLyrics([]);
+        }
+      }
       const player = backend();
       await player.load(track);
       if (isPlayingRef.current) {
         await player.play();
+        feed().start(track.audioPath, 0);
       }
     })();
     return () => {
@@ -187,42 +241,54 @@ export function App(): React.ReactNode {
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
 
+  // Play/pause transport, with the private spectrum feed mirrored.
   useEffect(() => {
     if (!track) return;
+    const current = trackRef.current;
     if (isPlaying) {
       void backend().play();
+      if (current) feed().start(current.audioPath, positionMsRef.current / 1000);
     } else {
       void backend().pause();
+      feed().stop();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying]);
 
   useEffect(() => {
     void backend().setVolume(volume);
+    updateConfig({ volume });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [volume]);
 
+  // Stop everything when the app unmounts.
   useEffect(() => {
     const player = backend();
+    const spectrum = spectrumRef.current;
+    const feeder = feedRef.current;
+    void SpectrumFeed.ensureFifo();
     return () => {
       void player.stop();
+      spectrum?.stop();
+      feeder?.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Position clock + natural track end.
   useEffect(() => {
     if (!isPlaying || !track) return undefined;
     const timer = setInterval(() => {
       setPositionMs((previous) => {
         const duration = metaRef.current.durationMs;
-        const next = previous + 500;
+        const next = previous + 250;
         if (duration !== undefined && next >= duration) {
           trackEndRef.current();
           return 0;
         }
         return next;
       });
-    }, 500);
+    }, 250);
     return () => {
       clearInterval(timer);
     };
@@ -231,9 +297,18 @@ export function App(): React.ReactNode {
   const metaRef = useRef(meta);
   metaRef.current = meta;
 
-  // Live spectrum (falls back to procedural when cava is quiet/absent).
+  // Private spectrum feed: cava decodes only our track via FIFO, so desktop
+  // audio never reaches the bars. Falls back to procedural when unavailable.
+  const spectrumRef = useRef<CavaSpectrum | undefined>(undefined);
   useEffect(() => {
-    const spectrum = new CavaSpectrum({ bars: 48, framerate: 30 });
+    if (!SpectrumFeed.ensureFifo()) return undefined;
+    const spectrum = new CavaSpectrum({
+      bars: 48,
+      framerate: 30,
+      inputMethod: 'fifo',
+      fifoPath: spectrumFifoPath(),
+    });
+    spectrumRef.current = spectrum;
     const unsubscribe = spectrum.onLevels((levels) => {
       latestSpectrum.current = levels;
       lastLiveAt.current = Date.now();
@@ -242,6 +317,7 @@ export function App(): React.ReactNode {
     return () => {
       unsubscribe();
       spectrum.stop();
+      spectrumRef.current = undefined;
     };
   }, []);
 
@@ -252,7 +328,7 @@ export function App(): React.ReactNode {
     const timer = setInterval(() => {
       const raw = latestSpectrum.current;
       if (raw && Date.now() - lastLiveAt.current < 600) {
-        const boosted = raw.map((value) => Math.min(1, value * VIZ_GAIN));
+        const boosted = raw.map((value) => Math.min(1, value * configRef.current.vizGain));
         setViz((previous) => applySpectrum(previous, boosted, vizColumns));
       } else {
         setViz((previous) => stepViz(previous, vizColumns, Date.now() / 1000, isPlaying));
@@ -267,6 +343,10 @@ export function App(): React.ReactNode {
     const clamped = Math.max(0, ms);
     setPositionMs(clamped);
     void backend().seek(clamped);
+    const current = trackRef.current;
+    if (current && isPlayingRef.current) {
+      feed().start(current.audioPath, clamped / 1000);
+    }
   };
 
   const next = (): void => {
@@ -318,9 +398,20 @@ export function App(): React.ReactNode {
   };
 
   useKeyboard((key) => {
+    if (process.env.MATPLAY_DEBUG_KEYS === '1') {
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify({ name: key.name, sequence: key.sequence }));
+    }
     const pressed = new Set([key.name, key.sequence]);
     const has = (...options: string[]): boolean =>
       options.some((option) => pressed.has(option));
+    // Arrow/enter names differ between legacy sequences and the Kitty
+    // keyboard protocol; accept every known variant.
+    const UP = ['up', 'ArrowUp'];
+    const DOWN = ['down', 'ArrowDown'];
+    const LEFT = ['left', 'ArrowLeft'];
+    const RIGHT = ['right', 'ArrowRight'];
+    const CONFIRM = ['return', 'enter'];
 
     // Text input owns every key except navigation while searching.
     if (searchOpen) {
@@ -328,12 +419,12 @@ export function App(): React.ReactNode {
         setSearchOpen(false);
         setQuery('');
         setSearchIndex(0);
-      } else if (has('return')) {
+      } else if (has(...CONFIRM)) {
         const selected = results[searchIndex];
         if (selected) playSearchResult(selected);
-      } else if (has('up')) {
+      } else if (has(...UP)) {
         setSearchIndex((index) => Math.max(0, index - 1));
-      } else if (has('down')) {
+      } else if (has(...DOWN)) {
         setSearchIndex((index) => Math.min(results.length - 1, index + 1));
       }
       return;
@@ -343,13 +434,13 @@ export function App(): React.ReactNode {
     if (browseOpen) {
       if (has('escape')) {
         setBrowseOpen(false);
-      } else if (has('return')) {
+      } else if (has(...CONFIRM)) {
         const row = browseIndex - 1;
         choosePlaylist(row < 0 ? undefined : library.playlists[row]?.name);
-      } else if (has('up')) {
+      } else if (has(...UP)) {
         setBrowseIndex((index) => Math.max(0, index - 1));
         return;
-      } else if (has('down')) {
+      } else if (has(...DOWN)) {
         setBrowseIndex((index) => Math.min(browseRows - 1, index + 1));
         return;
       }
@@ -358,13 +449,13 @@ export function App(): React.ReactNode {
     if (queueOpen) {
       if (has('escape')) {
         setQueueOpen(false);
-      } else if (has('return')) {
+      } else if (has(...CONFIRM)) {
         goTo(queueSel);
         setQueueOpen(false);
-      } else if (has('up')) {
+      } else if (has(...UP)) {
         setQueueSel((index) => Math.max(0, index - 1));
         return;
-      } else if (has('down')) {
+      } else if (has(...DOWN)) {
         setQueueSel((index) => Math.min(queue.length - 1, index + 1));
         return;
       }
@@ -393,6 +484,8 @@ export function App(): React.ReactNode {
       setHelpOpen((previous) => !previous);
     } else if (has('s')) {
       setMenuOpen((previous) => !previous);
+    } else if (has('l')) {
+      setLyricsVisible((previous) => !previous);
     } else if (has('/')) {
       setSearchIndex(0);
       setSearchOpen(true);
@@ -403,9 +496,9 @@ export function App(): React.ReactNode {
       next();
     } else if (has('p')) {
       previous();
-    } else if (has('left')) {
+    } else if (has(...LEFT)) {
       seekTo(positionMsRef.current - 5000);
-    } else if (has('right')) {
+    } else if (has(...RIGHT)) {
       seekTo(positionMsRef.current + 5000);
     } else if (has('+', '=', 'plus', 'equal')) {
       setVolume((previous) => Math.min(1, previous + 0.05));
@@ -428,19 +521,25 @@ export function App(): React.ReactNode {
   return (
     <box width="100%" height="100%" backgroundColor={theme.appBg} flexDirection="column">
       <box position="absolute" top={0} left={0} width={width} height={height}>
-        <Visualizer levels={viz.levels} peaks={viz.peaks} rows={vizRows} theme={theme} />
+        <Visualizer
+          levels={viz.levels}
+          peaks={viz.peaks}
+          rows={vizRows}
+          maxHeight={config.vizMaxHeight}
+          theme={theme}
+        />
       </box>
 
       <box flexDirection="row" alignItems="center" paddingX={2} paddingTop={1}>
         <box
-          width={5}
+          width={7}
           height={3}
           borderStyle="rounded"
-          borderColor={theme.accent}
+          borderColor={theme.complement}
           justifyContent="center"
           alignItems="center"
         >
-          <text fg={theme.accent}>
+          <text fg={theme.complement}>
             <strong>⚙</strong>
           </text>
         </box>
@@ -466,6 +565,9 @@ export function App(): React.ReactNode {
                 widthChars={SEEK_WIDTH}
                 theme={theme}
               />
+              {lyricsVisible ? (
+                <LyricsPanel lines={lyrics} positionMs={positionMs} theme={theme} />
+              ) : null}
             </box>
           </box>
           <text fg={theme.muted}>{'─'.repeat(CONTENT_WIDTH)}</text>
@@ -486,7 +588,7 @@ export function App(): React.ReactNode {
       {menuOpen ? (
         <box position="absolute" top={4} left={2}>
           <SettingsMenu
-            musicDir="~/Music/Spotify/"
+            musicDir={musicRoot}
             trackCount={queue.length}
             shuffle={shuffle}
             loopList={loopList}
