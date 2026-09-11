@@ -883,7 +883,6 @@ export function App(): React.ReactNode {
       <box flexDirection="row" alignItems="center" paddingX={2} paddingTop={1} backgroundColor="transparent">
         <SettingsButton
           color={theme.accent}
-          ink={theme.accentInk}
           onActivate={() => {
             const opening = !menuOpen;
             closeOverlays();
