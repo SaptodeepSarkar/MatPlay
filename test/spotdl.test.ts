@@ -40,6 +40,21 @@ describe('spotDL helper', () => {
     expect(invocation.args).toContain('--sync-without-deleting');
   });
 
+  it('only enables audio and lyric removal in explicit mirror mode', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'matplay-spotdl-'));
+    const invocation = buildSpotdlInvocation({
+      musicRoot: root,
+      playlist: 'Mirror',
+      query: 'https://open.spotify.com/playlist/example',
+      mode: 'sync',
+      deleteRemoved: true,
+    });
+
+    expect(invocation.args).toContain('--sync-remove-lrc');
+    expect(invocation.args).not.toContain('--sync-without-deleting');
+    expect(invocation.args).toContain('--save-file');
+  });
+
   it('sanitizes traversal and platform separators', () => {
     const sanitized = sanitizePlaylistName('../../Bad\\Name');
     expect(sanitized).not.toContain('..');

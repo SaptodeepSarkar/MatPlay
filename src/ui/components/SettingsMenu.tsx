@@ -13,6 +13,7 @@ export type SettingsMenuProps = {
   accentColor: string;
   vizGain: number;
   vizMaxHeight: number;
+  spotdlInstalled: boolean | undefined;
 };
 
 function Row({
@@ -51,6 +52,7 @@ export function SettingsMenu({
   accentColor,
   vizGain,
   vizMaxHeight,
+  spotdlInstalled,
 }: SettingsMenuProps): React.ReactNode {
   const onOff = (active: boolean): { value: string; valueFg: string } =>
     active
@@ -62,6 +64,7 @@ export function SettingsMenu({
     `ACCENT      ${accentColor === 'auto' ? 'COVER AUTO' : accentColor.toUpperCase()}`,
     `VIZ GAIN    ${vizGain.toFixed(1)}`,
     `VIZ HEIGHT  ${Math.round(vizMaxHeight * 100)}%`,
+    `SPOTDL      ${spotdlInstalled === undefined ? 'CHECKING' : spotdlInstalled ? 'DOWNLOADS' : 'NOT INSTALLED'}`,
     'RESET CONFIG',
   ];
 

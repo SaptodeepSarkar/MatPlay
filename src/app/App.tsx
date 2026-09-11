@@ -34,7 +34,9 @@ import { configExists, defaultConfig, loadConfig, saveConfig, type AppConfig } f
 import { SetupScreen } from '../ui/components/SetupScreen.js';
 import { DiagnosticsPanel } from '../ui/components/DiagnosticsPanel.js';
 import { SettingsButton } from '../ui/components/SettingsButton.js';
+import { SpotdlPanel } from '../ui/components/SpotdlPanel.js';
 import { resetTerminalBackground, syncTerminalBackground } from '../ui/terminalBackground.js';
+import { detectSpotdl, runSpotdl, stopSpotdlJobs, type SpotdlMode } from '../download/spotdl.js';
 import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
 import type { Track } from '../library/types.js';
@@ -203,6 +205,15 @@ export function App(): React.ReactNode {
   const [browseIndex, setBrowseIndex] = useState(0);
   const [queueOpen, setQueueOpen] = useState(false);
   const [queueSel, setQueueSel] = useState(0);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [downloadField, setDownloadField] = useState(0);
+  const [downloadQuery, setDownloadQuery] = useState('');
+  const [downloadPlaylist, setDownloadPlaylist] = useState(() => playlistFilter ?? library.playlists[0]?.name ?? 'Downloads');
+  const [downloadMode, setDownloadMode] = useState<SpotdlMode>('download');
+  const [deleteRemoved, setDeleteRemoved] = useState(false);
+  const [downloadRunning, setDownloadRunning] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState('Ready. Downloads continue if this panel is closed.');
+  const [hasSpotdl, setHasSpotdl] = useState<boolean | undefined>(undefined);
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
   const [lyricsVisible, setLyricsVisible] = useState(true);
   const [lyricsOffset, setLyricsOffset] = useState(0);
@@ -220,6 +231,16 @@ export function App(): React.ReactNode {
     levels: Array.from({ length: vizColumns }, () => 0.05),
     peaks: Array.from({ length: vizColumns }, () => 0.05),
   }));
+
+  useEffect(() => {
+    let cancelled = false;
+    void detectSpotdl().then((available) => {
+      if (!cancelled) setHasSpotdl(available);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const results = useMemo(() => searchTracks(allTracks, query), [allTracks, query]);
 
@@ -625,6 +646,28 @@ export function App(): React.ReactNode {
     setSearchOpen(false);
     setBrowseOpen(false);
     setQueueOpen(false);
+    setDownloadOpen(false);
+  };
+
+  const startDownload = (): void => {
+    if (downloadRunning) return;
+    setDownloadRunning(true);
+    setDownloadStatus('Starting spotDL…');
+    void runSpotdl({
+      musicRoot,
+      playlist: downloadPlaylist,
+      query: downloadQuery,
+      mode: downloadMode,
+      deleteRemoved,
+    }, setDownloadStatus).then((result) => {
+      setDownloadRunning(false);
+      setDownloadStatus(result.message);
+      if (result.ok) {
+        setDownloadPlaylist(result.playlist);
+        setLibraryRevision((revision) => revision + 1);
+        setLibraryNotice(`DOWNLOADED TO ${result.playlist.toUpperCase()}`);
+      }
+    });
   };
 
   const openQueue = (): void => {
@@ -652,6 +695,7 @@ export function App(): React.ReactNode {
       } catch {
         // Ignore.
       }
+      stopSpotdlJobs();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -702,13 +746,35 @@ export function App(): React.ReactNode {
       return;
     }
 
+    if (downloadOpen) {
+      if (has('escape')) {
+        setDownloadOpen(false);
+      } else if (has(...UP)) {
+        setDownloadField((index) => Math.max(0, index - 1));
+      } else if (has(...DOWN)) {
+        setDownloadField((index) => Math.min(4, index + 1));
+      } else if (has(...LEFT) || has(...RIGHT)) {
+        if (downloadField === 2) {
+          setDownloadMode((mode) => mode === 'download' ? 'sync' : 'download');
+        } else if (downloadField === 3 && downloadMode === 'sync') {
+          setDeleteRemoved((value) => !value);
+        }
+      } else if (has(...CONFIRM)) {
+        if (downloadField < 2) setDownloadField((index) => index + 1);
+        else if (downloadField === 2) setDownloadMode((mode) => mode === 'download' ? 'sync' : 'download');
+        else if (downloadField === 3 && downloadMode === 'sync') setDeleteRemoved((value) => !value);
+        else if (downloadField === 4) startDownload();
+      }
+      return;
+    }
+
     if (menuOpen) {
       if (has('escape', 's')) {
         setMenuOpen(false);
       } else if (has(...UP)) {
         setMenuIndex((index) => Math.max(0, index - 1));
       } else if (has(...DOWN)) {
-        setMenuIndex((index) => Math.min(5, index + 1));
+        setMenuIndex((index) => Math.min(6, index + 1));
       } else if (has(...CONFIRM)) {
         if (menuIndex === 0) {
           setSetupPath(musicRoot);
@@ -731,6 +797,13 @@ export function App(): React.ReactNode {
           updateConfig({ vizGain: config.vizGain >= 4 ? 0.2 : Math.round((config.vizGain + 0.2) * 10) / 10 });
         } else if (menuIndex === 4) {
           updateConfig({ vizMaxHeight: config.vizMaxHeight >= 1 ? 0.2 : Math.round((config.vizMaxHeight + 0.1) * 10) / 10 });
+        } else if (menuIndex === 5) {
+          setHasSpotdl(undefined);
+          void detectSpotdl().then(setHasSpotdl);
+          setDownloadPlaylist(playlistFilter ?? library.playlists[0]?.name ?? 'Downloads');
+          setDownloadField(0);
+          setMenuOpen(false);
+          setDownloadOpen(true);
         } else {
           const reset = defaultConfig();
           configRef.current = reset;
@@ -977,6 +1050,7 @@ export function App(): React.ReactNode {
             accentColor={config.accentColor}
             vizGain={config.vizGain}
             vizMaxHeight={config.vizMaxHeight}
+            spotdlInstalled={hasSpotdl}
           />
         </box>
       ) : null}
@@ -1040,6 +1114,28 @@ export function App(): React.ReactNode {
             selectedIndex={queueSel}
             playlistName={playlistFilter ?? 'all'}
             theme={theme}
+          />
+        </box>
+      ) : null}
+      {downloadOpen ? (
+        <box
+          position="absolute"
+          top={Math.max(0, Math.floor((height - 25) / 2))}
+          left={Math.max(0, Math.floor((width - Math.max(36, Math.min(82, width - 4))) / 2))}
+        >
+          <SpotdlPanel
+            width={Math.max(36, Math.min(82, width - 4))}
+            available={hasSpotdl}
+            query={downloadQuery}
+            playlist={downloadPlaylist}
+            mode={downloadMode}
+            deleteRemoved={deleteRemoved}
+            selectedIndex={downloadField}
+            running={downloadRunning}
+            status={downloadStatus}
+            theme={theme}
+            onQuery={setDownloadQuery}
+            onPlaylist={setDownloadPlaylist}
           />
         </box>
       ) : null}

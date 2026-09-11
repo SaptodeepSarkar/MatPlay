@@ -1,4 +1,4 @@
-import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 
@@ -28,16 +28,10 @@ export type SpotdlResult = {
 
 const activeChildren = new Set<ChildProcess>();
 
-export function spotdlAvailable(): boolean {
-  try {
-    execFileSync('spotdl', ['--version'], {
-      stdio: 'ignore',
-      timeout: 8000,
-    });
-    return true;
-  } catch {
-    return false;
-  }
+export function detectSpotdl(): Promise<boolean> {
+  return new Promise((resolve) => {
+    execFile('spotdl', ['--version'], { timeout: 8000 }, (error) => resolve(!error));
+  });
 }
 
 /** Make user-entered playlist names safe while keeping readable Unicode. */
@@ -101,14 +95,6 @@ export function runSpotdl(
   request: SpotdlRequest,
   onStatus: (message: string) => void = () => undefined,
 ): Promise<SpotdlResult> {
-  if (!spotdlAvailable()) {
-    return Promise.resolve({
-      ok: false,
-      message: 'spotDL is not installed. Re-run the installer with --with-spotdl.',
-      playlist: sanitizePlaylistName(request.playlist),
-    });
-  }
-
   let invocation: SpotdlInvocation;
   try {
     invocation = buildSpotdlInvocation(request);
@@ -143,7 +129,14 @@ export function runSpotdl(
     child.stderr?.on('data', acceptOutput);
     child.once('error', (error) => {
       activeChildren.delete(child);
-      resolve({ ok: false, message: error.message, playlist: invocation.playlist });
+      const missing = (error as NodeJS.ErrnoException).code === 'ENOENT';
+      resolve({
+        ok: false,
+        message: missing
+          ? 'spotDL is not installed. Re-run the installer with its spotDL option.'
+          : error.message,
+        playlist: invocation.playlist,
+      });
     });
     child.once('close', (code) => {
       activeChildren.delete(child);

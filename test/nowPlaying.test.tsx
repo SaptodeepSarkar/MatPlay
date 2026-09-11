@@ -52,6 +52,34 @@ describe('now playing mock', () => {
     expect(frame).toContain('KALYANI');
     setup.renderer.destroy();
   });
+
+  it('opens the wide spotDL workspace from settings', async () => {
+    const setup = await testRender(<App />, { width: 110, height: 50 });
+    await setup.renderOnce();
+    await act(async () => {
+      await setup.mockInput.pressKey('s');
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    });
+    await setup.renderOnce();
+    for (let index = 0; index < 5; index++) {
+      await act(async () => {
+        setup.mockInput.pressArrow('down');
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+      await setup.renderOnce();
+    }
+    await act(async () => {
+      setup.mockInput.pressEnter();
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    });
+    await setup.renderOnce();
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain('SPOTDL LIBRARY');
+    expect(frame).toContain('QUERY / SPOTIFY URL');
+    expect(frame).toContain('LOCAL PLAYLIST');
+    expect(frame).toContain('KEEP LOCAL (SAFE)');
+    setup.renderer.destroy();
+  });
 });
 
 describe('visualizer engine', () => {

@@ -183,6 +183,27 @@ re-verifies the version and fails loudly if winget tracks an older one).
 
 ---
 
+## Optional downloads and playlist sync
+
+Install spotDL with `./installer/install.sh --with-spotdl` on Linux/macOS or
+add `-WithSpotdl` to the PowerShell installer on Windows. Then open
+**Settings → SPOTDL DOWNLOADS**:
+
+- Enter a song name, Spotify track URL, or playlist URL.
+- Enter the local MatPlay playlist to receive it. New names are created
+  automatically, and files use `Playlist / Artist / Song / song.mp3`.
+- Choose **DOWNLOAD / ADD** for a one-off import.
+- Choose **SYNC SPOTIFY PLAYLIST** to create or refresh hidden sync state.
+  Leave the query blank on later runs to refresh the saved playlist.
+- Sync keeps removed tracks by default. Enable **DELETE LOCAL (MIRROR)** only
+  when the local playlist should exactly follow Spotify; spotDL then removes
+  audio and matching LRC files that disappeared from that saved playlist.
+
+spotDL uses Spotify for metadata and YouTube for audio. Users are responsible
+for complying with copyright law and the services' terms.
+
+---
+
 ## Keys
 
 <details>
