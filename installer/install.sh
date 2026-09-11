@@ -12,6 +12,7 @@
 #
 # Usage:
 #   ./install.sh                  # full install (auto-installs missing deps)
+#   ./install.sh --with-spotdl    # also install optional Spotify downloader
 #   ./install.sh --no-system-deps # skip system packages (you installed them)
 #   ./install.sh --dry-run        # show detection, install nothing
 #
@@ -29,10 +30,12 @@ REPO_URL="https://github.com/SaptodeepSarkar/MatPlay"
 DEST="${MATPLAY_DEST:-$HOME/Projects/MatPlay}"
 INSTALL_SYSTEM_DEPS=1
 DRY_RUN=0
+WITH_SPOTDL=0
 
 for arg in "$@"; do
   case "$arg" in
     --no-system-deps) INSTALL_SYSTEM_DEPS=0 ;;
+    --with-spotdl) WITH_SPOTDL=1 ;;
     --dry-run) DRY_RUN=1 ;;
     *) echo "unknown flag: $arg" >&2; exit 1 ;;
   esac
@@ -243,13 +246,42 @@ need ffplay && echo "  PASS  ffplay" || echo "  FAIL  ffplay"
 need mpg123 && echo "  PASS  mpg123" || echo "  FAIL  mpg123 (ffplay backend will be used)"
 need git && echo "  PASS  git" || echo "  FAIL  git"
 need cava && echo "  PASS  cava (live spectrum)" || echo "  WARN  cava (procedural visualizer fallback)"
+need spotdl && echo "  PASS  spotdl (downloads)" || echo "  WARN  spotdl (optional; use --with-spotdl)"
+
+# ---------------------------------------------------------------------------
+# Optional spotDL integration (official Python package)
+# ---------------------------------------------------------------------------
+install_spotdl() {
+  echo ""
+  echo "==> installing optional spotDL downloader"
+  if need pipx; then
+    pipx install spotdl
+  elif need python3 && python3 -m pip --version >/dev/null 2>&1; then
+    python3 -m pip install --user spotdl
+  elif need python && python -m pip --version >/dev/null 2>&1; then
+    python -m pip install --user spotdl
+  else
+    echo "    Python with pip (or pipx) is required for spotDL." >&2
+    echo "    MatPlay will still install; downloads remain unavailable." >&2
+    return 1
+  fi
+}
+
+if [ "$WITH_SPOTDL" -eq 1 ] && ! need spotdl; then
+  install_spotdl || true
+fi
+if [ "$WITH_SPOTDL" -eq 1 ]; then
+  need spotdl \
+    && echo "  PASS  spotdl ready" \
+    || echo "  WARN  spotdl installed outside PATH; add your Python user bin directory"
+fi
 
 # ---------------------------------------------------------------------------
 # App: clone/update, build, link
 # ---------------------------------------------------------------------------
 echo ""
 if [ ! -d "$DEST/.git" ]; then
-  echo "==> cloning $REPO_URL to $Dest"
+  echo "==> cloning $REPO_URL to $DEST"
   git clone "$REPO_URL" "$DEST"
 else
   echo "==> updating existing repo at $DEST"
@@ -301,6 +333,7 @@ echo "Key commands:"
 echo "  matplay          start the player"
 echo "  npm run dev      run from source"
 echo "  npm run check    verify all dependencies"
+echo "  Downloads:       Settings > SPOTDL DOWNLOADS (optional)"
 echo ""
 echo "If ~/.local/bin is not in your PATH, add this to ~/.bashrc or ~/.zshrc:"
 echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""

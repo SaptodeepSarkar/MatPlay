@@ -80,6 +80,7 @@ need ffplay && echo "  PASS  ffplay    found" || echo "  FAIL  ffplay    not fou
 need mpg123 && echo "  PASS  mpg123    found" || echo "  FAIL  mpg123    not found (ffplay backend will be used)"
 need git && echo "  PASS  git       found" || echo "  FAIL  git       not found"
 need cava && echo "  PASS  cava      found (live spectrum)" || echo "  WARN  cava      not found (procedural visualizer fallback)"
+need spotdl && echo "  PASS  spotdl    found (optional downloads)" || echo "  WARN  spotdl    not found (install with --with-spotdl)"
 
 echo ""
 echo "--- Config file locations ---"

@@ -84,6 +84,7 @@ link it globally, create the config skeleton, and print config paths.
 ```sh
 ./installer/install.sh --dry-run     # show detection, install nothing
 ./installer/install.sh --no-system-deps  # skip system packages
+./installer/install.sh --with-spotdl # add optional Spotify/YouTube downloads
 ./installer/detect.sh                # check deps without installing
 ```
 
@@ -91,6 +92,8 @@ link it globally, create the config skeleton, and print config paths.
 
 **Manual install:** `npm install`, `npm run build`, `npm link`. Requires
 Node.js ≥ 26.4, ffmpeg + ffplay; cava recommended for the live spectrum.
+Install the optional downloader with `pipx install spotdl` (or
+`python3 -m pip install --user spotdl`).
 
 ```sh
 npm run check   # verify node/ffmpeg/ffplay/cava/fifo on any machine

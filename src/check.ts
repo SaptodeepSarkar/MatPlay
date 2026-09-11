@@ -46,6 +46,13 @@ async function main(): Promise<void> {
     detail: cava ?? 'missing — procedural visualizer fallback',
   });
 
+  const spotdl = commandVersion('spotdl', ['--version']);
+  checks.push({
+    name: 'spotdl (optional downloads)',
+    ok: spotdl !== undefined,
+    detail: spotdl ?? 'missing — reinstall with --with-spotdl to enable downloads',
+  });
+
   let fifo = false;
   if (process.platform !== 'win32') {
     try {

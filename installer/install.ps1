@@ -12,6 +12,7 @@
 #
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File installer\install.ps1
+#   powershell -ExecutionPolicy Bypass -File installer\install.ps1 -WithSpotdl
 #
 # Verified dependency truth table (checked Sep 2026):
 #   ffmpeg (Gyan.FFmpeg) and git (Git.Git) available via winget.
@@ -23,6 +24,7 @@
 param(
   [string]$Dest = if ($env:MATPLAY_DEST) { $env:MATPLAY_DEST } else { "$HOME\Projects\MatPlay" },
   [switch]$NoSystemDeps,
+  [switch]$WithSpotdl,
   [switch]$DryRun
 )
 
@@ -74,6 +76,7 @@ Write-Check "ffplay" (Test-Command ffplay) $(if (Test-Command ffplay) { "found" 
 Write-Check "git" (Test-Command git) $(if (Test-Command git) { "found" } else { "required for clone" })
 Write-Check "mpg123" $false "unavailable on Windows — using ffplay backend"
 Write-Check "cava" $false "unavailable on Windows — using procedural visualizer"
+Write-Check "spotdl" (Test-Command spotdl) $(if (Test-Command spotdl) { "optional downloads ready" } else { "optional; use -WithSpotdl" })
 
 # Winget availability
 $wingetOk = Test-Command winget
@@ -140,6 +143,22 @@ if (-not $NoSystemDeps) {
 
   # --- cava (not on Windows) ---
   Write-Host "    cava: unavailable on Windows — procedural visualizer fallback" -ForegroundColor DarkGray
+}
+
+# ---------------------------------------------------------------------------
+# Optional spotDL integration (official Python package)
+# ---------------------------------------------------------------------------
+if ($WithSpotdl -and -not (Test-Command spotdl)) {
+  $python = if (Test-Command py) { "py" } elseif (Test-Command python) { "python" } else { $null }
+  if ($python) {
+    Write-Step "Installing optional spotDL downloader..."
+    & $python -m pip install --user spotdl
+    if (-not (Test-Command spotdl)) {
+      Write-Warning "spotDL installed outside PATH. Add your Python Scripts directory to PATH."
+    }
+  } else {
+    Write-Warning "Python with pip is required for spotDL. MatPlay will install without downloads."
+  }
 }
 
 # ---------------------------------------------------------------------------
@@ -223,6 +242,7 @@ Write-Host "Key commands:" -ForegroundColor Yellow
 Write-Host "  matplay          start the player" -ForegroundColor White
 Write-Host "  npm run dev      run from source" -ForegroundColor White
 Write-Host "  npm run check    verify all dependencies" -ForegroundColor White
+Write-Host "  Downloads:       Settings > SPOTDL DOWNLOADS (optional)" -ForegroundColor White
 Write-Host ""
 Write-Host "Media keys (play/pause/next/prev) work automatically when a" -ForegroundColor DarkGray
 Write-Host "desktop environment (e.g. Windows Media Transport) is available." -ForegroundColor DarkGray
