@@ -54,6 +54,7 @@ export class CavaSpectrum {
 
   start(): boolean {
     if (this.started) return true;
+    if (process.env.MATPLAY_NO_AUDIO === '1') return false;
     const config = [
       '[general]',
       `framerate = ${this.options.framerate}`,

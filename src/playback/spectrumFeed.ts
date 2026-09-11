@@ -36,6 +36,7 @@ export class SpectrumFeed {
 
   start(audioPath: string, offsetSec: number): void {
     this.stop();
+    if (process.env.MATPLAY_NO_AUDIO === '1') return;
     const fifo = spectrumFifoPath();
     let fd: number;
     try {

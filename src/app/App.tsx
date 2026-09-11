@@ -27,6 +27,7 @@ import { FfplayBackend } from '../playback/FfplayBackend.js';
 import { Mpg123Backend } from '../playback/Mpg123Backend.js';
 import { loadTrackMeta, metaFromFolder, type TrackMeta } from '../playback/trackMeta.js';
 import { MediaPresence } from '../platform/presence.js';
+import { onShutdown, runShutdown } from './shutdown.js';
 import { loadConfig, saveConfig, type AppConfig } from './config.js';
 import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
@@ -465,6 +466,34 @@ export function App(): React.ReactNode {
     setQueueOpen(true);
   };
 
+  // Audio children outlive unmount cleanups: register them for both the
+  // in-app quit path and OS signal handlers (see main.tsx).
+  useEffect(() => {
+    return onShutdown(() => {
+      try {
+        void backendRef.current?.stop();
+      } catch {
+        // Ignore.
+      }
+      try {
+        feedRef.current?.stop();
+      } catch {
+        // Ignore.
+      }
+      try {
+        spectrumRef.current?.stop();
+      } catch {
+        // Ignore.
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const quit = (): void => {
+    runShutdown();
+    renderer.destroy();
+  };
+
   useKeyboard((key) => {
     if (process.env.MATPLAY_DEBUG_KEYS === '1') {
       // eslint-disable-next-line no-console
@@ -530,7 +559,7 @@ export function App(): React.ReactNode {
     }
 
     if (has('q') && !key.shift) {
-      renderer.destroy();
+      quit();
     } else if (key.name === 'Q' || (key.name === 'q' && key.shift)) {
       if (queueOpen) {
         setQueueOpen(false);
@@ -544,7 +573,7 @@ export function App(): React.ReactNode {
         setBrowseOpen(false);
         setQueueOpen(false);
       } else {
-        renderer.destroy();
+        quit();
       }
     } else if (has('space', ' ')) {
       setIsPlaying((previous) => !previous);
