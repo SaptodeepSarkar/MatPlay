@@ -841,7 +841,7 @@ export function App(): React.ReactNode {
       ) : null}
 
       <box flexGrow={1} justifyContent="center" alignItems="center">
-        <box flexDirection="column" width={contentWidth} gap={1}>
+        <box flexDirection="column" width={contentWidth} gap={1} backgroundColor={theme.appBg}>
           <box flexDirection={compact ? 'column' : 'row'} gap={compact ? 1 : 3} alignItems={compact ? 'center' : undefined}>
             {!tiny ? <AlbumArtwork src={meta.coverSrc} theme={theme} width={compact ? 16 : 26} height={compact ? 8 : 13} /> : null}
             <box flexDirection="column" gap={1} justifyContent="flex-start" paddingTop={1}>
