@@ -92,6 +92,9 @@ installer/            # install.sh (linux/macOS), install.ps1 (windows)
 ## Platform notes
 
 - Linux/macOS: full experience (ffplay + cava + fifo feed).
+- Linux desktop applets (KDE/GNOME media controls): MatPlay registers
+  `org.mpris.MediaPlayer2.matplay` with title, artist, album, duration,
+  and cover art, and honors applet transport keys.
 - Windows: works; no cava/fifo, so the visualizer uses the procedural
   fallback. Install ffmpeg via `winget install Gyan.FFmpeg`.
 - Any terminal: Kitty graphics → Sixel → Unicode blocks, auto-negotiated.

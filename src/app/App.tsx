@@ -26,6 +26,7 @@ import type { AudioBackend } from '../playback/AudioBackend.js';
 import { FfplayBackend } from '../playback/FfplayBackend.js';
 import { Mpg123Backend } from '../playback/Mpg123Backend.js';
 import { loadTrackMeta, metaFromFolder, type TrackMeta } from '../playback/trackMeta.js';
+import { MediaPresence } from '../platform/presence.js';
 import { loadConfig, saveConfig, type AppConfig } from './config.js';
 import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
@@ -224,6 +225,8 @@ export function App(): React.ReactNode {
       const enriched = await loadTrackMeta(track, FALLBACK_COVER);
       if (cancelled) return;
       setMeta(enriched);
+      presenceRef.current?.updateTrack(track, enriched);
+      presenceRef.current?.updatePlaybackStatus(isPlayingRef.current, true);
       const cached = paletteCache.current.get(enriched.coverSrc);
       if (cached) {
         fadeTo(cached);
@@ -272,14 +275,16 @@ export function App(): React.ReactNode {
       void backend().pause();
       feed().stop();
     }
+    presenceRef.current?.updatePlaybackStatus(isPlaying, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying]);
 
   useEffect(() => {
     void backend().setVolume(volume);
     updateConfig({ volume });
+    presenceRef.current?.updateFlags(volume, shuffle, loopList, loopSingle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [volume]);
+  }, [volume, shuffle, loopList, loopSingle]);
 
   // Stop everything when the app unmounts.
   useEffect(() => {
@@ -380,11 +385,14 @@ export function App(): React.ReactNode {
     const clamped = Math.max(0, ms);
     setPositionMs(clamped);
     void backend().seek(clamped);
+    presenceRef.current?.reportSeek(clamped);
     const current = trackRef.current;
     if (current && isPlayingRef.current) {
       feed().start(current.audioPath, clamped / 1000);
     }
   };
+  const seekToRef = useRef(seekTo);
+  seekToRef.current = seekTo;
 
   const next = (): void => {
     if (queueIndex < queue.length - 1) {
@@ -408,6 +416,29 @@ export function App(): React.ReactNode {
       seekTo(0);
     }
   };
+  const nextRef = useRef(next);
+  nextRef.current = next;
+  const prevRef = useRef(previous);
+  prevRef.current = previous;
+
+  // OS media presence: expose track + transport both ways.
+  const presenceRef = useRef<MediaPresence | undefined>(undefined);
+  useEffect(() => {
+    const presence = new MediaPresence({
+      play: () => setIsPlaying(true),
+      pause: () => setIsPlaying(false),
+      toggle: () => setIsPlaying((previous) => !previous),
+      next: () => nextRef.current(),
+      previous: () => prevRef.current(),
+      stop: () => setIsPlaying(false),
+      seekTo: (ms) => seekToRef.current(ms),
+      getPositionMs: () => positionMsRef.current,
+    });
+    presenceRef.current = presence;
+    return () => {
+      presenceRef.current = undefined;
+    };
+  }, []);
 
   const playSearchResult = (selected: Track): void => {
     const index = allTracks.findIndex((item) => item.id === selected.id);
