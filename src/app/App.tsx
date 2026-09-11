@@ -891,9 +891,7 @@ export function App(): React.ReactNode {
           }}
         />
         <box flexGrow={1} />
-        <text fg={library.diagnostics.length > 0 ? theme.signal : theme.muted}>
-          {libraryNotice ?? (library.diagnostics.length > 0 ? `⚠ ${library.diagnostics.length} · D DETAILS` : meta.streamLabel)}
-        </text>
+        <text fg={theme.muted}>{libraryNotice ?? meta.streamLabel}</text>
       </box>
       {audioError ? (
         <box justifyContent="center" backgroundColor={theme.card}>
