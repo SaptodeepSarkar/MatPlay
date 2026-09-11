@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
-import { KALYANI_COVER_THEME, type StitchTheme } from '../ui/stitchTheme.js';
+import { KALYANI_COVER_THEME, stitchFallbackTheme, type StitchTheme } from '../ui/stitchTheme.js';
 import { lerpTheme, sampleCoverTheme } from '../ui/palette.js';
 import { AlbumArtwork } from '../ui/components/AlbumArtwork.js';
 import { TrackMetadata } from '../ui/components/TrackMetadata.js';
@@ -29,7 +29,7 @@ import { Mpg123Backend } from '../playback/Mpg123Backend.js';
 import { loadTrackMeta, metaFromFolder, type TrackMeta } from '../playback/trackMeta.js';
 import { MediaPresence } from '../platform/presence.js';
 import { onShutdown, runShutdown } from './shutdown.js';
-import { configExists, loadConfig, saveConfig, type AppConfig } from './config.js';
+import { configExists, defaultConfig, loadConfig, saveConfig, type AppConfig } from './config.js';
 import { SetupScreen } from '../ui/components/SetupScreen.js';
 import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
@@ -127,7 +127,10 @@ export function App(): React.ReactNode {
   const queueIndexRef = useRef(queueIndex);
   queueIndexRef.current = queueIndex;
 
-  const [theme, setTheme] = useState<StitchTheme>(KALYANI_COVER_THEME);
+  const [theme, setTheme] = useState<StitchTheme>(() => {
+    const base = config.theme === 'light' ? stitchFallbackTheme : KALYANI_COVER_THEME;
+    return { ...base, accent: config.accentColor };
+  });
   // Resume paused on the last played song; never autoplay on startup.
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioError, setAudioError] = useState<string | undefined>();
@@ -152,6 +155,7 @@ export function App(): React.ReactNode {
   const orderRef = useRef(order);
   orderRef.current = order;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuIndex, setMenuIndex] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -188,11 +192,14 @@ export function App(): React.ReactNode {
 
   const fadeTo = (target: StitchTheme): void => {
     const from = themeRef.current;
+    const preferred = configRef.current.theme === 'light'
+      ? { ...stitchFallbackTheme, accent: configRef.current.accentColor }
+      : { ...target, accent: configRef.current.accentColor };
     if (fadeTimer.current) clearInterval(fadeTimer.current);
     let step = 0;
     fadeTimer.current = setInterval(() => {
       step += 1;
-      setTheme(lerpTheme(from, target, step / FADE_STEPS));
+      setTheme(lerpTheme(from, preferred, step / FADE_STEPS));
       if (step >= FADE_STEPS && fadeTimer.current) {
         clearInterval(fadeTimer.current);
         fadeTimer.current = undefined;
@@ -609,6 +616,46 @@ export function App(): React.ReactNode {
       return;
     }
 
+    if (menuOpen) {
+      if (has('escape', 's')) {
+        setMenuOpen(false);
+      } else if (has(...UP)) {
+        setMenuIndex((index) => Math.max(0, index - 1));
+      } else if (has(...DOWN)) {
+        setMenuIndex((index) => Math.min(5, index + 1));
+      } else if (has(...CONFIRM)) {
+        if (menuIndex === 0) {
+          setSetupPath(musicRoot);
+          setSetupDiagnostics([]);
+          setSetupOpen(true);
+          setMenuOpen(false);
+        } else if (menuIndex === 1) {
+          const mode = config.theme === 'dark' ? 'light' : 'dark';
+          updateConfig({ theme: mode });
+          setTheme(mode === 'light' ? { ...stitchFallbackTheme, accent: config.accentColor } : { ...KALYANI_COVER_THEME, accent: config.accentColor });
+        } else if (menuIndex === 2) {
+          const accents = ['#BB86FC', '#03DAC6', '#D9AB4E', '#FF5A00'];
+          const nextAccent = accents[(accents.indexOf(config.accentColor.toUpperCase()) + 1) % accents.length] ?? accents[0]!;
+          updateConfig({ accentColor: nextAccent });
+          setTheme((current) => ({ ...current, accent: nextAccent }));
+        } else if (menuIndex === 3) {
+          updateConfig({ vizGain: config.vizGain >= 4 ? 0.2 : Math.round((config.vizGain + 0.2) * 10) / 10 });
+        } else if (menuIndex === 4) {
+          updateConfig({ vizMaxHeight: config.vizMaxHeight >= 1 ? 0.2 : Math.round((config.vizMaxHeight + 0.1) * 10) / 10 });
+        } else {
+          const reset = defaultConfig();
+          configRef.current = reset;
+          setConfig(reset);
+          saveConfig(reset);
+          setSetupPath(reset.musicRoot);
+          setSetupDiagnostics([]);
+          setSetupOpen(true);
+          setMenuOpen(false);
+        }
+      }
+      return;
+    }
+
     // Text input owns every key except navigation while searching.
     if (searchOpen) {
       if (has('escape')) {
@@ -801,6 +848,11 @@ export function App(): React.ReactNode {
             loopList={loopList}
             loopSingle={loopSingle}
             theme={theme}
+            selectedIndex={menuIndex}
+            themeMode={config.theme}
+            accentColor={config.accentColor}
+            vizGain={config.vizGain}
+            vizMaxHeight={config.vizMaxHeight}
           />
         </box>
       ) : null}

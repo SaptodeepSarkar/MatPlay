@@ -7,6 +7,11 @@ export type SettingsMenuProps = {
   loopList: boolean;
   loopSingle: boolean;
   theme: StitchTheme;
+  selectedIndex: number;
+  themeMode: 'dark' | 'light';
+  accentColor: string;
+  vizGain: number;
+  vizMaxHeight: number;
 };
 
 function Row({
@@ -40,11 +45,24 @@ export function SettingsMenu({
   loopList,
   loopSingle,
   theme,
+  selectedIndex,
+  themeMode,
+  accentColor,
+  vizGain,
+  vizMaxHeight,
 }: SettingsMenuProps): React.ReactNode {
   const onOff = (active: boolean): { value: string; valueFg: string } =>
     active
       ? { value: 'ON', valueFg: theme.signal }
       : { value: 'OFF', valueFg: theme.muted };
+  const settingRows = [
+    `MUSIC ROOT  ${musicDir}`,
+    `THEME       ${themeMode.toUpperCase()}`,
+    `ACCENT      ${accentColor.toUpperCase()}`,
+    `VIZ GAIN    ${vizGain.toFixed(1)}`,
+    `VIZ HEIGHT  ${Math.round(vizMaxHeight * 100)}%`,
+    'RESET CONFIG',
+  ];
 
   return (
     <box
@@ -59,11 +77,15 @@ export function SettingsMenu({
       <text fg={theme.accent}>
         <strong>[ SYS CONFIG ]</strong>
       </text>
+      <text fg={theme.muted}>{trackCount} TRACKS · ↑↓ MOVE · ENTER CHANGE</text>
       <box flexDirection="column">
-        <text fg={theme.muted}>MUSIC DIRECTORY</text>
-        <text fg={theme.text}>
-          {musicDir}  {trackCount} TRACKS
-        </text>
+        {settingRows.map((label, index) => (
+          <box key={label} backgroundColor={index === selectedIndex ? theme.accent : undefined}>
+            <text fg={index === selectedIndex ? theme.accentInk : theme.text}>
+              {index === selectedIndex ? <strong>{`▸ ${label}`}</strong> : `  ${label}`}
+            </text>
+          </box>
+        ))}
       </box>
       <box flexDirection="column">
         <text fg={theme.muted}>PLAYBACK CONFIG</text>
@@ -71,6 +93,7 @@ export function SettingsMenu({
         <Row label="[2] LOOP PLAYLIST" {...onOff(loopList)} theme={theme} />
         <Row label="[3] LOOP SINGLE" {...onOff(loopSingle)} theme={theme} />
       </box>
+      <text fg={theme.muted}>ESC close</text>
       <box flexDirection="column">
         <text fg={theme.muted}>DSP</text>
         <text>
