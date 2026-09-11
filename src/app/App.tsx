@@ -530,7 +530,7 @@ export function App(): React.ReactNode {
   };
 
   const openQueue = (): void => {
-    setQueueSel(queueIndex);
+    setQueueSel(Math.max(0, order.indexOf(queueIndex)));
     setQueueOpen(true);
   };
 
@@ -615,7 +615,8 @@ export function App(): React.ReactNode {
       if (has('escape')) {
         setQueueOpen(false);
       } else if (has(...CONFIRM)) {
-        goTo(queueSel);
+        const bounded = Math.min(Math.max(0, queueSel), order.length - 1);
+        goTo(order[bounded] ?? queueIndex);
         setQueueOpen(false);
       } else if (has(...UP)) {
         setQueueSel((index) => Math.max(0, index - 1));
@@ -803,7 +804,8 @@ export function App(): React.ReactNode {
         >
           <QueueOverlay
             queue={queue}
-            queueIndex={queueIndex}
+            order={order}
+            currentPos={Math.max(0, order.indexOf(queueIndex))}
             selectedIndex={queueSel}
             playlistName={playlistFilter ?? 'all'}
             theme={theme}

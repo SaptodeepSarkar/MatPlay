@@ -3,7 +3,11 @@ import type { StitchTheme } from '../stitchTheme.js';
 
 export type QueueOverlayProps = {
   queue: Track[];
-  queueIndex: number;
+  /** Play order (shuffled or sequential): positions into `queue`. */
+  order: number[];
+  /** Position of the current track inside `order`. */
+  currentPos: number;
+  /** Cursor position inside `order`. */
   selectedIndex: number;
   playlistName: string;
   theme: StitchTheme;
@@ -14,13 +18,14 @@ const WINDOW = 10;
 /** Upcoming queue with jump-to support. */
 export function QueueOverlay({
   queue,
-  queueIndex,
+  order,
+  currentPos,
   selectedIndex,
   playlistName,
   theme,
 }: QueueOverlayProps): React.ReactNode {
-  const start = Math.max(0, Math.min(queueIndex - 3, queue.length - WINDOW));
-  const visible = queue.slice(start, start + WINDOW);
+  const start = Math.max(0, Math.min(currentPos - 3, order.length - WINDOW));
+  const visible = order.slice(start, start + WINDOW);
 
   return (
     <box
@@ -36,12 +41,14 @@ export function QueueOverlay({
         <strong>[ QUEUE · {playlistName.toUpperCase()} ]</strong>
       </text>
       <box flexDirection="column">
-        {visible.map((track, offset) => {
-          const index = start + offset;
-          const isCurrent = index === queueIndex;
-          const isSelected = index === selectedIndex;
+        {visible.map((trackPosition, offset) => {
+          const position = start + offset;
+          const track = queue[trackPosition];
+          if (!track) return null;
+          const isCurrent = position === currentPos;
+          const isSelected = position === selectedIndex;
           const marker = isCurrent ? '♪' : isSelected ? '▸' : ' ';
-          const row = `${marker} ${String(index + 1).padStart(2, '0')}  ${track.title} — ${track.artist}`;
+          const row = `${marker} ${String(position + 1).padStart(2, '0')}  ${track.title} — ${track.artist}`;
           if (isSelected) {
             return (
               <box key={track.id} backgroundColor={theme.accent}>
