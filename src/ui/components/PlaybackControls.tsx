@@ -46,7 +46,7 @@ export function PlaybackControls({
 }: PlaybackControlsProps): React.ReactNode {
   return (
     <box flexDirection="row" gap={1}>
-      <IconButton glyph="⤨" active={shuffle} activeFg={theme.signal} theme={theme} />
+      <IconButton glyph="⇄" active={shuffle} activeFg={theme.signal} theme={theme} />
       <IconButton glyph="◀◀" active={false} activeFg={theme.text} theme={theme} />
       <box
         height={3}
@@ -59,7 +59,7 @@ export function PlaybackControls({
         </text>
       </box>
       <IconButton glyph="▶▶" active={false} activeFg={theme.text} theme={theme} />
-      <IconButton glyph="↻¹" active={loopSingle} activeFg={theme.signal} theme={theme} />
+      <IconButton glyph="↻1" active={loopSingle} activeFg={theme.signal} theme={theme} />
       <IconButton glyph="↻" active={loopList} activeFg={theme.text} theme={theme} />
     </box>
   );
