@@ -8,6 +8,7 @@ import { SeekBar } from '../ui/components/SeekBar.js';
 import { PlaybackControls } from '../ui/components/PlaybackControls.js';
 import { VolumeMeter } from '../ui/components/VolumeMeter.js';
 import { SettingsMenu } from '../ui/components/SettingsMenu.js';
+import { ShortcutsPanel } from '../ui/components/ShortcutsPanel.js';
 import { Visualizer } from '../ui/components/Visualizer.js';
 import { stepViz, type VizState } from '../ui/visualizerEngine.js';
 
@@ -32,7 +33,7 @@ const COVER_SRC = fileURLToPath(
 export function App(): React.ReactNode {
   const theme = KALYANI_COVER_THEME;
   const renderer = useRenderer();
-  const { width } = useTerminalDimensions();
+  const { width, height } = useTerminalDimensions();
   const vizColumns = Math.max(16, Math.floor((width - 4) / 2));
 
   const [isPlaying, setIsPlaying] = useState(true);
@@ -42,6 +43,7 @@ export function App(): React.ReactNode {
   const [loopList, setLoopList] = useState(true);
   const [loopSingle, setLoopSingle] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [viz, setViz] = useState<VizState>(() => ({
     levels: Array.from({ length: vizColumns }, () => 0.05),
     peaks: Array.from({ length: vizColumns }, () => 0.05),
@@ -73,10 +75,19 @@ export function App(): React.ReactNode {
     const has = (...options: string[]): boolean =>
       options.some((option) => pressed.has(option));
 
-    if (has('q', 'escape')) {
+    if (has('q')) {
       renderer.destroy();
+    } else if (has('escape')) {
+      if (menuOpen || helpOpen) {
+        setMenuOpen(false);
+        setHelpOpen(false);
+      } else {
+        renderer.destroy();
+      }
     } else if (has('space', ' ')) {
       setIsPlaying((previous) => !previous);
+    } else if (has('?')) {
+      setHelpOpen((previous) => !previous);
     } else if (has('s')) {
       setMenuOpen((previous) => !previous);
     } else if (has('left')) {
@@ -166,6 +177,15 @@ export function App(): React.ReactNode {
             loopSingle={loopSingle}
             theme={theme}
           />
+        </box>
+      ) : null}
+      {helpOpen ? (
+        <box
+          position="absolute"
+          top={Math.max(0, Math.floor((height - 17) / 2))}
+          left={Math.max(0, Math.floor((width - 40) / 2))}
+        >
+          <ShortcutsPanel theme={theme} />
         </box>
       ) : null}
     </box>

@@ -8,7 +8,8 @@ export type PlaybackControlsProps = {
   theme: StitchTheme;
 };
 
-/** Icon-only hardware button, after the Stitch transport controls. */
+/** Borderless icon slot, after the Stitch transport: only the play button
+ *  carries a fill, icons sit centered in equal slots. */
 function IconButton({
   glyph,
   active,
@@ -22,11 +23,8 @@ function IconButton({
 }): React.ReactNode {
   return (
     <box
-      width={7}
+      width={5}
       height={3}
-      borderStyle="single"
-      borderColor={theme.muted}
-      backgroundColor={active ? theme.cardAlt : undefined}
       justifyContent="center"
       alignItems="center"
     >
