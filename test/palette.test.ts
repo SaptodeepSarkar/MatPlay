@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hexToRgb, lerpTheme, rgbToHex } from '../src/ui/palette.js';
+import { contrastRatio, hexToRgb, lerpTheme, rgbToHex, themeFromPixels } from '../src/ui/palette.js';
 import { KALYANI_COVER_THEME, stitchFallbackTheme } from '../src/ui/stitchTheme.js';
 
 describe('palette helpers', () => {
@@ -20,5 +20,32 @@ describe('palette helpers', () => {
     expect(lerpTheme(KALYANI_COVER_THEME, stitchFallbackTheme, 99).appBg).toBe(
       stitchFallbackTheme.appBg,
     );
+  });
+
+  it('darkens neon covers and guarantees readable token contrast', () => {
+    const theme = themeFromPixels([
+      [0, 0, 255],
+      [0, 20, 240],
+      [0, 220, 255],
+      [15, 15, 30],
+    ], KALYANI_COVER_THEME);
+    const background = hexToRgb(theme.appBg);
+
+    expect(contrastRatio(hexToRgb(theme.text), background)).toBeGreaterThanOrEqual(7);
+    expect(contrastRatio(hexToRgb(theme.muted), background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(hexToRgb(theme.accent), background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(hexToRgb(theme.accentInk), hexToRgb(theme.accent))).toBeGreaterThanOrEqual(4.5);
+    expect(theme.appBg).not.toBe('#0000b3');
+  });
+
+  it('preserves the hue family of ordinary cover palettes', () => {
+    const theme = themeFromPixels([
+      [32, 7, 5],
+      [58, 16, 9],
+      [217, 171, 78],
+      [246, 233, 210],
+    ], KALYANI_COVER_THEME);
+    const [r, , b] = hexToRgb(theme.appBg);
+    expect(r).toBeGreaterThan(b);
   });
 });

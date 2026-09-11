@@ -20,8 +20,23 @@ export function rgbToHex([r, g, b]: RGB): string {
   return `#${pad(r)}${pad(g)}${pad(b)}`;
 }
 
-function luminance([r, g, b]: RGB): number {
+function perceivedLuminance([r, g, b]: RGB): number {
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+
+/** WCAG relative luminance, used only for readability guarantees. */
+export function relativeLuminance([r, g, b]: RGB): number {
+  const linear = (channel: number): number => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+}
+
+export function contrastRatio(foreground: RGB, background: RGB): number {
+  const light = Math.max(relativeLuminance(foreground), relativeLuminance(background));
+  const dark = Math.min(relativeLuminance(foreground), relativeLuminance(background));
+  return (light + 0.05) / (dark + 0.05);
 }
 
 function saturation([r, g, b]: RGB): number {
@@ -35,6 +50,36 @@ const scale = (color: RGB, factor: number): RGB => [
   color[1] * factor,
   color[2] * factor,
 ];
+
+const mixRgb = (from: RGB, to: RGB, amount: number): RGB => [
+  from[0] + (to[0] - from[0]) * amount,
+  from[1] + (to[1] - from[1]) * amount,
+  from[2] + (to[2] - from[2]) * amount,
+];
+
+function ensureContrast(color: RGB, background: RGB, minimum: number): RGB {
+  if (contrastRatio(color, background) >= minimum) return color;
+  const white: RGB = [255, 255, 255];
+  const black: RGB = [0, 0, 0];
+  const target = contrastRatio(white, background) >= contrastRatio(black, background) ? white : black;
+  for (let step = 1; step <= 20; step++) {
+    const candidate = mixRgb(color, target, step / 20);
+    if (contrastRatio(candidate, background) >= minimum) return candidate;
+  }
+  return target;
+}
+
+function readableInk(background: RGB): RGB {
+  const light: RGB = [246, 233, 210];
+  const dark: RGB = [10, 10, 10];
+  return contrastRatio(light, background) >= contrastRatio(dark, background) ? light : dark;
+}
+
+/** Preserve sampled hue while preventing neon cover pixels becoming a neon page. */
+function darkCoverSurface(color: RGB): RGB {
+  const [h, s, l] = rgbToHsl(color);
+  return hslToRgb([h, Math.min(s, 0.68), Math.min(0.13, Math.max(0.055, l * 0.42))]);
+}
 
 function rgbToHsl([r, g, b]: RGB): [number, number, number] {
   const rn = r / 255;
@@ -94,7 +139,7 @@ export function lerpTheme(from: StitchTheme, to: StitchTheme, t: number): Stitch
       rgbA[2] + (rgbB[2] - rgbA[2]) * clamped,
     ]);
   };
-  return {
+  return enforceThemeContrast({
     appBg: mix(from.appBg, to.appBg),
     card: mix(from.card, to.card),
     cardAlt: mix(from.cardAlt, to.cardAlt),
@@ -104,6 +149,22 @@ export function lerpTheme(from: StitchTheme, to: StitchTheme, t: number): Stitch
     accentInk: mix(from.accentInk, to.accentInk),
     signal: mix(from.signal, to.signal),
     complement: mix(from.complement, to.complement),
+  });
+}
+
+/** Repair only token pairs that fail contrast, leaving safe themes unchanged. */
+export function enforceThemeContrast(theme: StitchTheme): StitchTheme {
+  const background = hexToRgb(theme.appBg);
+  const accent = ensureContrast(hexToRgb(theme.accent), background, 4.5);
+  const signal = ensureContrast(hexToRgb(theme.signal), background, 3);
+  return {
+    ...theme,
+    text: rgbToHex(ensureContrast(hexToRgb(theme.text), background, 7)),
+    muted: rgbToHex(ensureContrast(hexToRgb(theme.muted), background, 4.5)),
+    accent: rgbToHex(accent),
+    accentInk: rgbToHex(ensureContrast(readableInk(accent), accent, 4.5)),
+    signal: rgbToHex(signal),
+    complement: rgbToHex(ensureContrast(hexToRgb(theme.complement), background, 3)),
   };
 }
 
@@ -147,36 +208,39 @@ export async function sampleCoverTheme(
   const pixels = await readPixels(coverPath);
   if (pixels.length === 0) return fallback;
 
-  const byLuminance = [...pixels].sort((a, b) => luminance(a) - luminance(b));
-  const darkest = byLuminance[0] ?? hexToRgb(fallback.appBg);  // Hero color must be visible: most saturated pixel within a sane
-  // brightness band, so near-black reds never become the accent.
+  return themeFromPixels(pixels, fallback);
+}
+
+/** Pure palette derivation kept separate so pathological covers are testable. */
+export function themeFromPixels(pixels: RGB[], fallback: StitchTheme): StitchTheme {
+  if (pixels.length === 0) return fallback;
+
+  const byLuminance = [...pixels].sort((a, b) => perceivedLuminance(a) - perceivedLuminance(b));
+  const darkest = byLuminance[0] ?? hexToRgb(fallback.appBg);
+  // Hero color must be visible: most saturated pixel within a sane brightness
+  // band, so near-black reds never become the accent.
   const candidates = pixels.filter((pixel) => {
-    const lum = luminance(pixel);
+    const lum = perceivedLuminance(pixel);
     return lum > 0.22 && lum < 0.92;
   });
   const pool = candidates.length > 0 ? candidates : byLuminance;
   const vivid = [...pool].sort((a, b) => saturation(b) - saturation(a))[0]
     ?? hexToRgb(fallback.accent);
 
-  // Surfaces must never be pure black: text rows sit directly on appBg,
-  // and anything darker than ~0.06 luminance reads as a black hole.
-  const lifted = (color: RGB, floor: number): RGB => {
-    const lum = luminance(color);
-    return lum < floor ? scale(color, floor / Math.max(0.001, lum)) : color;
-  };
-  const appBg = lifted(scale(darkest, 0.7), 0.06);
-  const card = scale(appBg, 1.7);
-  const cardAlt = scale(appBg, 2.8);
+  const backgroundSeed = perceivedLuminance(darkest) < 0.01 ? vivid : darkest;
+  const appBg = darkCoverSurface(backgroundSeed);
+  const card = mixRgb(appBg, [255, 255, 255], 0.08);
+  const cardAlt = mixRgb(appBg, [255, 255, 255], 0.17);
   const hero: RGB = saturation(vivid) > 0.2 ? vivid : hexToRgb(fallback.accent);
-  const bright = luminance(hero) < 0.22 ? scale(hero, 1.8) : hero;
-  const darkPage = luminance(appBg) < 0.45;
+  const bright = perceivedLuminance(hero) < 0.22 ? scale(hero, 1.8) : hero;
+  const darkPage = relativeLuminance(appBg) < 0.18;
   const text: RGB = darkPage ? hexToRgb('#f6e9d2') : hexToRgb('#1a0c08');
   const rawComplement = rotateHue(bright, 180);
-  const complement: RGB = luminance(rawComplement) < 0.18
+  const complement: RGB = perceivedLuminance(rawComplement) < 0.18
     ? scale(rawComplement, 1.6)
     : rawComplement;
 
-  return {
+  return enforceThemeContrast({
     appBg: rgbToHex(appBg),
     card: rgbToHex(card),
     cardAlt: rgbToHex(cardAlt),
@@ -186,5 +250,5 @@ export async function sampleCoverTheme(
     accentInk: rgbToHex(appBg),
     signal: '#ff5a00',
     complement: rgbToHex(complement),
-  };
+  });
 }
