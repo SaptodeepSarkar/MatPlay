@@ -854,7 +854,11 @@ export function App(): React.ReactNode {
       </box>
 
       <box flexDirection="row" alignItems="center" paddingX={2} paddingTop={1} backgroundColor="transparent">
-        <text fg={theme.accent}>
+        <text fg={theme.accent} onMouseDown={() => {
+          const opening = !menuOpen;
+          closeOverlays();
+          setMenuOpen(opening);
+        }}>
           <strong>{'  ⚙  '}</strong>
         </text>
         <box flexGrow={1} />
@@ -900,6 +904,12 @@ export function App(): React.ReactNode {
               loopList={loopList}
               loopSingle={loopSingle}
               theme={theme}
+              onTogglePlay={() => setIsPlaying((previousState) => !previousState)}
+              onPrevious={previous}
+              onNext={next}
+              onToggleShuffle={() => setShuffle((value) => !value)}
+              onToggleLoopList={() => setLoopList((value) => !value)}
+              onToggleLoopSingle={() => setLoopSingle((value) => !value)}
             />
             <box flexGrow={1} />
             <VolumeMeter volume={volume} theme={theme} />
