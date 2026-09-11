@@ -498,7 +498,8 @@ export function App(): React.ReactNode {
   }, [isPlaying, vizColumns]);
 
   const seekTo = (ms: number): void => {
-    const clamped = Math.max(0, ms);
+    const duration = metaRef.current.durationMs;
+    const clamped = Math.min(duration ?? Number.POSITIVE_INFINITY, Math.max(0, ms));
     setPositionMs(clamped);
     presenceRef.current?.reportSeek(clamped);
     const current = trackRef.current;
