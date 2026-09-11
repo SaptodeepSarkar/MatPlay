@@ -76,7 +76,10 @@ export function App(): React.ReactNode {
   const seekWidth = compact ? Math.max(24, contentWidth - 2) : 44;
 
   const [config, setConfig] = useState<AppConfig>(() => loadConfig());
-  const [setupOpen, setSetupOpen] = useState(() => !configExists());
+  const [setupOpen, setSetupOpen] = useState(() => {
+    if (process.env.MATPLAY_MUSIC_ROOT) return false;
+    return !configExists() || scanLibrarySync(config.musicRoot).diagnostics.some((item) => item.level === 'error');
+  });
   const [setupPath, setSetupPath] = useState(config.musicRoot);
   const [setupDiagnostics, setSetupDiagnostics] = useState<ReturnType<typeof scanLibrarySync>['diagnostics']>([]);
   const configRef = useRef(config);
@@ -295,7 +298,9 @@ export function App(): React.ReactNode {
     if (!track) return undefined;
     setLyricsOffset(0);
     let cancelled = false;
-    updateConfig({ lastTrackId: track.id, lastPlaylist: track.playlist });
+    if (!process.env.MATPLAY_MUSIC_ROOT) {
+      updateConfig({ lastTrackId: track.id, lastPlaylist: track.playlist });
+    }
     const cachedMeta = metaCache.current.get(track.id);
     const cachedLyrics = lyricsCache.current.get(track.id);
     if (cachedMeta) {

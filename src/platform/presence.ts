@@ -52,7 +52,7 @@ export class MediaPresence {
   constructor(controls: PresenceControls) {
     let player: MprisPlayer | undefined;
     try {
-      if (process.platform !== 'linux') return;
+      if (process.platform !== 'linux' || process.env.MATPLAY_NO_AUDIO === '1') return;
       player = Player({
         name: 'matplay',
         identity: 'MatPlay',
