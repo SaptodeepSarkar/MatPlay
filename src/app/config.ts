@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
+import { AlexaConfigSchema } from '../alexa/types.js';
 
 const ConfigSchema = z.object({
   /** Main music folder: playlist / artist / song / song.mp3. */
@@ -19,6 +20,8 @@ const ConfigSchema = z.object({
   theme: z.enum(['cover', 'light']).default('cover'),
   /** Reserved for a future manual accent override. */
   accentColor: z.string().default('auto'),
+  /** Detachable Alexa hybrid (alexa-remote2, no SmartHome skill). Off = never loaded. */
+  alexa: AlexaConfigSchema.default({}),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;
@@ -31,6 +34,14 @@ export function defaultConfig(): AppConfig {
     vizMaxHeight: 0.92,
     theme: 'cover',
     accentColor: 'auto',
+    alexa: {
+      enabled: false,
+      device: '',
+      amazonPage: 'amazon.com',
+      pollMs: 4000,
+      respondToVoice: true,
+      mirrorToEcho: true,
+    },
   };
 }
 

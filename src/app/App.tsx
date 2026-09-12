@@ -40,6 +40,7 @@ import { detectSpotdl, hasSpotdlSync, runSpotdl, stopSpotdlJobs, type SpotdlMode
 import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
 import type { Track } from '../library/types.js';
+import type { AlexaStatus } from '../alexa/types.js';
 import { mergeInputValue } from '../ui/inputValue.js';
 
 const WIDE_CONTENT_WIDTH = 75;
@@ -455,6 +456,9 @@ export function App(): React.ReactNode {
     void backend().setVolume(volume);
     updateConfig({ volume });
     presenceRef.current?.updateFlags(volume, shuffle, loopSingle, loopList);
+    if (configRef.current.alexa.enabled && configRef.current.alexa.mirrorToEcho) {
+      alexaRef.current?.remoteVolume(volume * 100);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [volume, shuffle, loopList, loopSingle]);
 
@@ -620,6 +624,56 @@ export function App(): React.ReactNode {
     };
   }, []);
 
+  // Detachable Alexa hybrid (no SmartHome skill, no Lambda):
+  // OFF = this dynamic import never runs, so alexa-remote2 stays out of
+  // memory entirely. ON = load connector, drive Echo as remote + replay
+  // "…on matplay" voice commands into local transport. dispose() on
+  // toggle-off/unmount kills poll timers + push sockets (zero perf cost).
+  const alexaRef = useRef<{ remoteAction: (a: 'play' | 'pause' | 'next' | 'previous' | 'stop') => void; remoteVolume: (v: number) => void; dispose: () => void } | undefined>(undefined);
+  const [alexaStatus, setAlexaStatus] = useState<AlexaStatus>({ state: 'off' });
+  useEffect(() => {
+    if (!config.alexa.enabled) {
+      alexaRef.current?.dispose();
+      alexaRef.current = undefined;
+      setAlexaStatus({ state: 'off' });
+      return;
+    }
+    let cancelled = false;
+    setAlexaStatus({ state: 'starting' });
+    void import('../alexa/connector.js').then(({ AlexaConnector }) => {
+      if (cancelled) return;
+      const connector = new AlexaConnector({
+        config: configRef.current.alexa,
+        transport: {
+          play: () => setIsPlaying(true),
+          pause: () => setIsPlaying(false),
+          toggle: () => setIsPlaying((previous) => !previous),
+          next: () => nextRef.current(),
+          previous: () => prevRef.current(),
+          stop: () => setIsPlaying(false),
+        },
+        onStatus: (status) => {
+          if (!cancelled) setAlexaStatus(status);
+        },
+      });
+      alexaRef.current = connector;
+      void connector.start();
+    });
+    return () => {
+      cancelled = true;
+      alexaRef.current?.dispose();
+      alexaRef.current = undefined;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.alexa.enabled]);
+
+  /** Mirror an explicit local transport action to the Echo (no-op unless ready). */
+  const mirrorToEcho = (action: 'play' | 'pause' | 'next' | 'previous' | 'stop'): void => {
+    if (configRef.current.alexa.enabled && configRef.current.alexa.mirrorToEcho) {
+      alexaRef.current?.remoteAction(action);
+    }
+  };
+
   const playSearchResult = (selected: Track): void => {
     const index = allTracks.findIndex((item) => item.id === selected.id);
     setPlaylistFilter(undefined);
@@ -708,6 +762,11 @@ export function App(): React.ReactNode {
       }
       try {
         spectrumRef.current?.stop();
+      } catch {
+        // Ignore.
+      }
+      try {
+        alexaRef.current?.dispose();
       } catch {
         // Ignore.
       }
@@ -803,7 +862,7 @@ export function App(): React.ReactNode {
       } else if (has(...UP)) {
         setMenuIndex((index) => Math.max(0, index - 1));
       } else if (has(...DOWN)) {
-        setMenuIndex((index) => Math.min(7, index + 1));
+        setMenuIndex((index) => Math.min(8, index + 1));
       } else if (has(...CONFIRM)) {
         if (menuIndex === 0) {
           setSetupPath(musicRoot);
@@ -845,6 +904,10 @@ export function App(): React.ReactNode {
             setDownloadField(0);
             setDownloadOpen(true);
           }
+        } else if (menuIndex === 7) {
+          const enabled = !config.alexa.enabled;
+          updateConfig({ alexa: { ...config.alexa, enabled } });
+          setLibraryNotice(enabled ? 'ALEXA CONNECTING' : 'ALEXA OFF');
         } else {
           const reset = defaultConfig();
           configRef.current = reset;
@@ -937,6 +1000,7 @@ export function App(): React.ReactNode {
         quit();
       }
     } else if (has('space', ' ')) {
+      mirrorToEcho(isPlayingRef.current ? 'pause' : 'play');
       setIsPlaying((previous) => !previous);
     } else if (has('?')) {
       const opening = !helpOpen;
@@ -965,8 +1029,10 @@ export function App(): React.ReactNode {
       setBrowseIndex(0);
       setBrowseOpen(opening);
     } else if (has('n')) {
+      mirrorToEcho('next');
       next();
     } else if (has('p')) {
+      mirrorToEcho('previous');
       previous();
     } else if (has(...UP) && lyricsVisible) {
       setLyricsOffset((offset) => Math.max(0, offset - 1));
@@ -1030,7 +1096,7 @@ export function App(): React.ReactNode {
           }}
         />
         <box flexGrow={1} />
-        <text fg={theme.muted}>{libraryNotice ?? meta.streamLabel}</text>
+        <text fg={theme.muted}>{libraryNotice ?? meta.streamLabel}{config.alexa.enabled ? ` · ALEXA ${alexaStatus.state.toUpperCase()}` : ''}</text>
       </box>
       {audioError ? (
         <box justifyContent="center" backgroundColor={theme.card}>
@@ -1070,9 +1136,18 @@ export function App(): React.ReactNode {
               loopList={loopList}
               loopSingle={loopSingle}
               theme={theme}
-              onTogglePlay={() => setIsPlaying((previousState) => !previousState)}
-              onPrevious={previous}
-              onNext={next}
+              onTogglePlay={() => {
+                mirrorToEcho(isPlayingRef.current ? 'pause' : 'play');
+                setIsPlaying((previousState) => !previousState);
+              }}
+              onPrevious={() => {
+                mirrorToEcho('previous');
+                previous();
+              }}
+              onNext={() => {
+                mirrorToEcho('next');
+                next();
+              }}
               onToggleShuffle={() => setShuffle((value) => !value)}
               onToggleLoopList={() => setLoopList((value) => !value)}
               onToggleLoopSingle={() => setLoopSingle((value) => !value)}
@@ -1100,6 +1175,14 @@ export function App(): React.ReactNode {
             spotdlInstalled={hasSpotdl}
             syncPlaylist={activeLocalPlaylist}
             syncReady={savedSyncReady}
+            alexaEnabled={config.alexa.enabled}
+            alexaState={
+              alexaStatus.state === 'ready'
+                ? (alexaStatus.detail ?? 'READY')
+                : alexaStatus.state === 'needs-login'
+                  ? 'NEEDS LOGIN'
+                  : alexaStatus.state.toUpperCase()
+            }
           />
         </box>
       ) : null}
