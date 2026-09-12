@@ -1,18 +1,31 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { z } from 'zod';
 import { configDir } from '../app/config.js';
-import { parseAlexaMatplayCommand } from './commandParser.js';
 import { describeDevices, pickMusicDevice, type AlexaDeviceInfo } from './devices.js';
 import type {
   AlexaConfig,
   AlexaRemoteAction,
   AlexaStatus,
-  AlexaTransport,
 } from './types.js';
+
+const CookieSchema = z.object({}).passthrough();
+
+function persistCookieAtomic(cookieFile: string, data: unknown): void {
+  mkdirSync(configDir(), { recursive: true, mode: 0o700 });
+  try {
+    const st = lstatSync(cookieFile);
+    if (st.isSymbolicLink()) return;
+  } catch {
+    // No existing file; proceed.
+  }
+  const tmp = `${cookieFile}.${process.pid}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
+  renameSync(tmp, cookieFile);
+}
 
 export type AlexaConnectorOptions = {
   config: AlexaConfig;
-  transport: AlexaTransport;
   onStatus?: (status: AlexaStatus) => void;
 };
 
@@ -28,10 +41,6 @@ type AlexaRemoteInstance = {
     value: unknown,
     cb: (err?: Error) => void,
   ) => void;
-  getCustomerHistoryRecords: (
-    options: unknown,
-    cb: (err?: Error, body?: unknown) => void,
-  ) => void;
   find: (name: string) => unknown;
   serialNumbers: Record<
     string,
@@ -45,20 +54,17 @@ type AlexaRemoteInstance = {
   cookieData?: unknown;
 };
 
-type HistoryRecord = {
-  utteranceId?: string;
-  summary?: string;
-  voiceHistoryRecord?: { summary?: string; utteranceId?: string };
-  creationTimestamp?: number;
-};
-
 /**
- * Detachable hybrid connector — no SmartHome skill, no Lambda.
+ * Outbound-only Alexa remote — MatPlay drives the Echo, never the reverse.
  *
- * OUTBOUND: remoteAction() sends play/pause/next/previous/stop to the Echo
- *   via alexa-remote2 sendCommand (same endpoint the Alexa app uses).
- * INBOUND: polls getCustomerHistoryRecords for utterances containing
- *   "matplay" and replays them into the local transport.
+ * OUTBOUND: remoteAction() sends pause/stop to the Echo via alexa-remote2
+ *   sendCommand (same endpoint the Alexa app uses), purely to silence
+ *   competing Spotify audio when MatPlay plays over the private Bluetooth
+ *   link. play/next/previous/volume are never forwarded — they would drive
+ *   the Echo's own player (wrong content, "Spotify remote" feel). Volume
+ *   keys control only MatPlay's local decoder volume.
+ * INBOUND: removed. No voice-history polling, no utterance replay. Alexa
+ *   cannot control the MatPlay stream, by design.
  *
  * Lifecycle: construction does NOTHING (no imports, no sockets).
  * start() dynamically imports alexa-remote2, so when disabled the heavy
@@ -66,8 +72,6 @@ type HistoryRecord = {
  */
 export class AlexaConnector {
   private alexa: AlexaRemoteInstance | undefined;
-  private pollTimer: NodeJS.Timeout | undefined;
-  private seenUtterances = new Set<string>();
   private disposed = false;
   private status: AlexaStatus = { state: 'off' };
 
@@ -90,8 +94,14 @@ export class AlexaConnector {
     }
   }
 
-  /** OUTBOUND: drive the Echo from MatPlay (space/n/p mirror). */
+  /**
+   * OUTBOUND: silence the Echo's current source (usually Spotify) so it
+   * doesn't compete with MatPlay's private Bluetooth audio. Only
+   * pause/stop/volume are meaningful here; play/next/previous are dropped
+   * to prevent driving the Echo's own queue with the wrong content.
+   */
   remoteAction(action: AlexaRemoteAction, value: unknown = true): void {
+    if (action !== 'pause' && action !== 'stop') return;
     const alexa = this.alexa;
     if (!alexa || this.status.state !== 'ready') return;
     const target = this.resolveTarget(alexa);
@@ -101,18 +111,6 @@ export class AlexaConnector {
       alexa.sendCommand(target, command, value, () => undefined);
     } catch {
       // Best-effort remote; local playback is authoritative.
-    }
-  }
-
-  remoteVolume(level0to100: number): void {
-    const alexa = this.alexa;
-    if (!alexa || this.status.state !== 'ready') return;
-    const target = this.resolveTarget(alexa);
-    if (!target) return;
-    try {
-      alexa.sendCommand(target, 'volume', Math.max(0, Math.min(100, Math.round(level0to100))), () => undefined);
-    } catch {
-      // Ignore.
     }
   }
 
@@ -139,7 +137,13 @@ export class AlexaConnector {
     let cookie: unknown;
     try {
       if (existsSync(cookieFile)) {
-        cookie = JSON.parse(readFileSync(cookieFile, 'utf8')) as unknown;
+        if (lstatSync(cookieFile).isSymbolicLink()) {
+          this.setStatus({ state: 'error', detail: 'cookie path is a symlink; refusing to read' });
+          return;
+        }
+        const parsed: unknown = JSON.parse(readFileSync(cookieFile, 'utf8'));
+        const validated = CookieSchema.safeParse(parsed);
+        cookie = validated.success ? validated.data : undefined;
       }
     } catch {
       cookie = undefined;
@@ -156,8 +160,7 @@ export class AlexaConnector {
     try {
       alexa.on('cookie', () => {
         try {
-          mkdirSync(configDir(), { recursive: true });
-          writeFileSync(cookieFile, `${JSON.stringify(alexa.cookieData ?? cookie, null, 2)}\n`);
+          persistCookieAtomic(cookieFile, alexa.cookieData ?? cookie);
         } catch {
           // Persist is best-effort.
         }
@@ -199,10 +202,6 @@ export class AlexaConnector {
     });
     if (this.disposed) {
       this.teardown();
-      return;
-    }
-    if (this.status.state === 'ready' && this.options.config.respondToVoice) {
-      this.beginPolling();
     }
   }
 
@@ -230,65 +229,7 @@ export class AlexaConnector {
     }
   }
 
-  private beginPolling(): void {
-    this.stopPolling();
-    const pollOnce = (): void => {
-      if (this.disposed || this.status.state !== 'ready') return;
-      const alexa = this.alexa;
-      if (!alexa) return;
-      const now = Date.now();
-      try {
-        alexa.getCustomerHistoryRecords(
-          {
-            startTime: now - 60_000,
-            endTime: now,
-            recordType: 'VOICE_HISTORY',
-            maxRecordSize: 10,
-          },
-          (err?: Error, body?: unknown) => {
-            if (err || this.disposed) return;
-            this.handleHistory(body);
-          },
-        );
-      } catch {
-        // Poll failures are routine (rate limits); next tick retries.
-      }
-    };
-    pollOnce();
-    this.pollTimer = setInterval(pollOnce, this.options.config.pollMs);
-    if (typeof this.pollTimer === 'object' && 'unref' in this.pollTimer) {
-      (this.pollTimer as NodeJS.Timeout).unref?.();
-    }
-  }
-
-  private handleHistory(body: unknown): void {
-    const records = extractRecords(body);
-    for (const record of records) {
-      const text = record.summary ?? record.voiceHistoryRecord?.summary ?? '';
-      const id =
-        record.utteranceId ?? record.voiceHistoryRecord?.utteranceId ?? `${record.creationTimestamp ?? 0}:${text}`;
-      if (!text || this.seenUtterances.has(id)) continue;
-      this.seenUtterances.add(id);
-      if (this.seenUtterances.size > 200) {
-        const first = this.seenUtterances.values().next().value;
-        if (first !== undefined) this.seenUtterances.delete(first);
-      }
-      const action = parseAlexaMatplayCommand(text);
-      if (!action) continue;
-      this.setStatus({ state: 'ready', lastVoiceText: text, lastVoiceAt: Date.now() });
-      applyToTransport(this.options.transport, action);
-    }
-  }
-
-  private stopPolling(): void {
-    if (this.pollTimer) {
-      clearInterval(this.pollTimer);
-      this.pollTimer = undefined;
-    }
-  }
-
   private teardown(): void {
-    this.stopPolling();
     try {
       this.alexa?.removeAllListeners();
     } catch {
@@ -300,7 +241,6 @@ export class AlexaConnector {
       // Ignore.
     }
     this.alexa = undefined;
-    this.seenUtterances.clear();
   }
 
   /** Idempotent. After dispose the instance must not be restarted. */
@@ -309,43 +249,5 @@ export class AlexaConnector {
     this.disposed = true;
     this.teardown();
     this.setStatus({ state: 'off' });
-  }
-}
-
-function extractRecords(body: unknown): HistoryRecord[] {
-  if (!body || typeof body !== 'object') return [];
-  const root = body as Record<string, unknown>;
-  const candidates = [
-    root.customerHistoryRecords,
-    root.history,
-    root.records,
-    (root.data as Record<string, unknown> | undefined)?.customerHistoryRecords,
-  ];
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) return candidate as HistoryRecord[];
-  }
-  return [];
-}
-
-function applyToTransport(transport: AlexaTransport, action: AlexaRemoteAction | 'toggle'): void {
-  switch (action) {
-    case 'play':
-      transport.play();
-      break;
-    case 'pause':
-      transport.pause();
-      break;
-    case 'toggle':
-      transport.toggle();
-      break;
-    case 'next':
-      transport.next();
-      break;
-    case 'previous':
-      transport.previous();
-      break;
-    case 'stop':
-      transport.stop();
-      break;
   }
 }

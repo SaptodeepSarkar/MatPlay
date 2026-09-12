@@ -98,6 +98,11 @@ export class FfplayBackend implements AudioBackend {
     this.stopProcess();
   }
 
+  childPids(): number[] {
+    const pid = this.proc?.pid;
+    return pid !== undefined ? [pid] : [];
+  }
+
   private readPosition(): number {
     if (!this.playing) return this.baseMs;
     return this.baseMs + (Date.now() - this.startedAt);

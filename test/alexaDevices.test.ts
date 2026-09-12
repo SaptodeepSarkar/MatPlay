@@ -17,9 +17,9 @@ describe('pickMusicDevice', () => {
     expect(pickMusicDevice(DEVICES, '')?.serial).toBe('echo1');
   });
 
-  it('falls back gracefully when nothing matches', () => {
+  it('fails closed when an explicit pin matches nothing', () => {
     expect(pickMusicDevice([], '')).toBeUndefined();
-    expect(pickMusicDevice(DEVICES, 'nope')?.serial).toBe('echo1');
+    expect(pickMusicDevice(DEVICES, 'nope')).toBeUndefined();
   });
 });
 

@@ -1,12 +1,14 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
 import { AlexaConfigSchema } from '../alexa/types.js';
 
 const ConfigSchema = z.object({
-  /** Main music folder: playlist / artist / song / song.mp3. */
-  musicRoot: z.string().min(1),
+  /** Main music folder: playlist / artist / song / song.mp3. Must be absolute. */
+  musicRoot: z.string().min(1).refine((v) => path.isAbsolute(v), {
+    message: 'musicRoot must be an absolute path',
+  }),
   /** 0..1, restored on startup. */
   volume: z.number().min(0).max(1),
   /** Spectrum amplification applied before bar mapping. */
@@ -19,9 +21,17 @@ const ConfigSchema = z.object({
   /** Reserved for a future manual theme override. */
   theme: z.enum(['cover', 'light']).default('cover'),
   /** Reserved for a future manual accent override. */
-  accentColor: z.string().default('auto'),
+  accentColor: z.union([z.literal('auto'), z.string().regex(/^#[0-9a-fA-F]{6}$/)]).default('auto'),
   /** Detachable Alexa hybrid (alexa-remote2, no SmartHome skill). Off = never loaded. */
   alexa: AlexaConfigSchema.default({}),
+  /** Local cast server: MatPlay serves its own MP3s so Echo needs no Spotify. */
+  cast: z.object({
+    enabled: z.boolean().default(false),
+    port: z.number().min(1024).max(65535).default(8173),
+    /** false = loopback only; true = LAN with token auth (explicit opt-in). */
+    lan: z.boolean().default(false),
+    token: z.string().min(16).max(256).default('matplay-local-cast-token-change-me'),
+  }).default({ enabled: false, port: 8173, lan: false, token: 'matplay-local-cast-token-change-me' }),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;
@@ -38,9 +48,14 @@ export function defaultConfig(): AppConfig {
       enabled: false,
       device: '',
       amazonPage: 'amazon.com',
-      pollMs: 4000,
-      respondToVoice: true,
       mirrorToEcho: true,
+      bluetoothMac: '',
+    },
+    cast: {
+      enabled: false,
+      port: 8173,
+      lan: false,
+      token: 'matplay-local-cast-token-change-me',
     },
   };
 }
@@ -80,11 +95,14 @@ export function loadConfig(): AppConfig {
   }
 }
 
-/** Persist config. Best-effort: the player works without a writable home. */
+/** Persist config atomically (tmp + rename) with 0600 perms. Best-effort. */
 export function saveConfig(config: AppConfig): void {
   try {
-    mkdirSync(configDir(), { recursive: true });
-    writeFileSync(configPath(), `${JSON.stringify(config, null, 2)}\n`);
+    mkdirSync(configDir(), { recursive: true, mode: 0o700 });
+    const target = configPath();
+    const tmp = `${target}.${process.pid}.tmp`;
+    writeFileSync(tmp, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+    renameSync(tmp, target);
   } catch {
     // Ignore: config is a convenience, not a requirement.
   }

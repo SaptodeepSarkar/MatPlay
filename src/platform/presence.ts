@@ -52,7 +52,7 @@ export class MediaPresence {
   constructor(controls: PresenceControls) {
     let player: MprisPlayer | undefined;
     try {
-      if (process.platform !== 'linux' || process.env.MATPLAY_NO_AUDIO === '1') return;
+      if (process.platform !== 'linux' || process.env.MATPLAY_NO_AUDIO === '1' || process.env.MATPLAY_NO_MPRIS === '1') return;
       player = Player({
         name: 'matplay',
         identity: 'MatPlay',
@@ -82,7 +82,10 @@ export class MediaPresence {
     player.on('previous', () => controls.previous());
     player.on('quit', () => controls.stop());
     player.on('seek', (offsetUs: number) => {
-      controls.seekTo(controls.getPositionMs() + offsetUs / 1000);
+      if (!Number.isFinite(offsetUs)) return;
+      const target = controls.getPositionMs() + offsetUs / 1000;
+      if (!Number.isFinite(target)) return;
+      controls.seekTo(Math.max(0, target));
     });
     player.on('volume', (volume: number) => {
       void volume;
@@ -116,7 +119,7 @@ export class MediaPresence {
     const player = this.player;
     if (!player) return;
     try {
-      player.volume = volume;
+      player.volume = Math.min(1, Math.max(0, Number.isFinite(volume) ? volume : 0));
       player.shuffle = shuffle;
       player.loopStatus = repeatOne ? 'Track' : repeatAll ? 'Playlist' : 'None';
     } catch {

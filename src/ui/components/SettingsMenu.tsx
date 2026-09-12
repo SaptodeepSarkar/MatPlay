@@ -18,6 +18,8 @@ export type SettingsMenuProps = {
   syncReady: boolean;
   alexaEnabled: boolean;
   alexaState: string;
+  /** Feature flag: false hides the ALEXA row entirely (undiscoverable). */
+  showAlexa: boolean;
 };
 
 function Row({
@@ -61,6 +63,7 @@ export function SettingsMenu({
   syncReady,
   alexaEnabled,
   alexaState,
+  showAlexa,
 }: SettingsMenuProps): React.ReactNode {
   const onOff = (active: boolean): { value: string; valueFg: string } =>
     active
@@ -74,7 +77,7 @@ export function SettingsMenu({
     `VIZ HEIGHT  ${Math.round(vizMaxHeight * 100)}%`,
     `SPOTDL      ${spotdlInstalled === undefined ? 'CHECKING' : spotdlInstalled ? 'DOWNLOADS' : 'NOT INSTALLED'}`,
     `SYNC NOW    ${syncReady ? truncateText(syncPlaylist, 16) : 'SET UP'}`,
-    `ALEXA       ${alexaEnabled ? alexaState.toUpperCase() : 'OFF'}`,
+    ...(showAlexa ? [`ALEXA       ${alexaEnabled ? alexaState.toUpperCase() : 'OFF'}`] : []),
     'RESET CONFIG',
   ];
 

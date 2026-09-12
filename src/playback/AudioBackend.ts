@@ -16,4 +16,10 @@ export interface AudioBackend {
   getDuration(): Promise<number | undefined>;
   /** Kill the underlying process. stop() only halts output. */
   destroy(): Promise<void>;
+  /**
+   * Live decoder child PIDs, for audio routing. Lets the app move ONLY its
+   * own streams to the Echo sink — other apps' streams are never touched.
+   * Empty when nothing is spawned (timer fallback, tests).
+   */
+  childPids(): number[];
 }

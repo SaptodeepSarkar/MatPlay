@@ -1,7 +1,20 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { statSync } from 'node:fs';
 import { parseFile } from 'music-metadata';
 import type { Track } from '../library/types.js';
 import type { AudioBackend } from './AudioBackend.js';
+import { hasProtocolBreakers } from '../security/sanitize.js';
+
+const MAX_PROTOCOL_LINE = 64 * 1024;
+
+function isSafeAudioPath(audioPath: string): boolean {
+  if (!audioPath || hasProtocolBreakers(audioPath)) return false;
+  try {
+    return statSync(audioPath).isFile();
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Gapless playback via `mpg123` remote control (`-R`).
@@ -114,6 +127,12 @@ export class Mpg123Backend implements AudioBackend {
     }
     this.expectStop = true;
     const acked = this.waitForLoadAck();
+    if (!isSafeAudioPath(track.audioPath)) {
+      this.flushLoadWaiters();
+      await tags;
+      this.onError?.('Refusing to load unsafe audio path.');
+      return;
+    }
     this.send(`LOADPAUSED ${track.audioPath}`);
     await Promise.all([tags, acked]);
   }
@@ -143,7 +162,7 @@ export class Mpg123Backend implements AudioBackend {
       // After natural EOF the decoder is spent; reload before resuming.
       this.endedSinceLoad = false;
       this.expectStop = true;
-      if (this.lastPath) this.send(`LOADPAUSED ${this.lastPath}`);
+      if (this.lastPath && isSafeAudioPath(this.lastPath)) this.send(`LOADPAUSED ${this.lastPath}`);
     }
     this.send('PAUSE');
     this.playing = true;
@@ -167,14 +186,15 @@ export class Mpg123Backend implements AudioBackend {
   }
 
   async seek(ms: number): Promise<void> {
-    const clamped = Math.max(0, ms);
+    if (!Number.isFinite(ms)) return;
+    const clamped = Math.min(this.durationMs ?? Number.MAX_SAFE_INTEGER, Math.max(0, ms));
     this.positionMs = clamped;
     if (!this.ensure()) return;
     if (this.endedSinceLoad) {
       // A spent decoder ignores JUMP: reload paused at the target, then
       // let play() resume from there.
       this.expectStop = true;
-      if (this.lastPath) this.send(`LOADPAUSED ${this.lastPath}`);
+      if (this.lastPath && isSafeAudioPath(this.lastPath)) this.send(`LOADPAUSED ${this.lastPath}`);
       this.endedSinceLoad = false;
     }
     this.send(`JUMP ${(clamped / 1000).toFixed(2)}s`);
@@ -210,6 +230,11 @@ export class Mpg123Backend implements AudioBackend {
     }
   }
 
+  childPids(): number[] {
+    const pid = this.proc?.pid;
+    return pid !== undefined ? [pid] : [];
+  }
+
   private send(command: string): void {
     const stdin = this.proc?.stdin;
     if (!stdin || stdin.destroyed) return;
@@ -222,6 +247,10 @@ export class Mpg123Backend implements AudioBackend {
 
   private ingest(text: string): void {
     this.buffer += text;
+    if (this.buffer.length > MAX_PROTOCOL_LINE) {
+      // Malformed decoder output without newline: drop to bound memory.
+      this.buffer = this.buffer.slice(-MAX_PROTOCOL_LINE);
+    }
     const newlineIndex = this.buffer.lastIndexOf('\n');
     if (newlineIndex < 0) return;
     const complete = this.buffer.slice(0, newlineIndex);
