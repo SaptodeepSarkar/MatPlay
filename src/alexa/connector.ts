@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { configDir } from '../app/config.js';
 import { parseAlexaMatplayCommand } from './commandParser.js';
+import { describeDevices, pickMusicDevice, type AlexaDeviceInfo } from './devices.js';
 import type {
   AlexaConfig,
   AlexaRemoteAction,
@@ -32,7 +33,15 @@ type AlexaRemoteInstance = {
     cb: (err?: Error, body?: unknown) => void,
   ) => void;
   find: (name: string) => unknown;
-  serialNumbers: Record<string, { accountName?: string }>;
+  serialNumbers: Record<
+    string,
+    {
+      accountName?: string;
+      deviceFamily?: string;
+      online?: boolean;
+      hasMusicPlayer?: boolean;
+    }
+  >;
   cookieData?: unknown;
 };
 
@@ -173,8 +182,10 @@ export class AlexaConnector {
               resolve();
               return;
             }
-            const count = Object.keys(alexa.serialNumbers ?? {}).length;
-            this.setStatus({ state: 'ready', detail: `${count} echo(s)`, deviceCount: count });
+            const devices = AlexaConnector.readDevices(alexa);
+            const target = pickMusicDevice(devices, this.options.config.device);
+            const detail = describeDevices(devices, target);
+            this.setStatus({ state: 'ready', detail, deviceCount: devices.filter((d) => d.music).length });
             resolve();
           },
         );
@@ -195,18 +206,28 @@ export class AlexaConnector {
     }
   }
 
+  /** Speakers-only view of Amazon's mixed device list (apps/phones excluded). */
+  static readDevices(alexa: AlexaRemoteInstance): AlexaDeviceInfo[] {
+    return Object.entries(alexa.serialNumbers ?? {}).map(([serial, d]) => ({
+      serial,
+      name: d.accountName ?? serial,
+      family: d.deviceFamily,
+      online: d.online ?? false,
+      music: d.hasMusicPlayer ?? false,
+    }));
+  }
+
   private resolveTarget(alexa: AlexaRemoteInstance): unknown {
-    const want = this.options.config.device.trim();
-    if (want) {
-      try {
-        const found = alexa.find(want);
-        if (found) return found;
-      } catch {
-        // Fall through to first device.
-      }
+    const target = pickMusicDevice(
+      AlexaConnector.readDevices(alexa),
+      this.options.config.device,
+    );
+    if (!target) return undefined;
+    try {
+      return alexa.find(target.serial) ?? alexa.find(target.name) ?? target.serial;
+    } catch {
+      return target.serial;
     }
-    const serials = Object.keys(alexa.serialNumbers ?? {});
-    return serials[0] ? alexa.find(serials[0]) ?? serials[0] : undefined;
   }
 
   private beginPolling(): void {

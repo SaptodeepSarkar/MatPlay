@@ -243,14 +243,34 @@ npm run alexa:login          # opens a browser login, saves the cookie to
 ```
 
 Then open **Settings → ALEXA** and flip it **ON**. The top bar shows
-`ALEXA READY` / `NEEDS LOGIN`. Flip it **OFF** and the connector is fully
-disposed — timers and sockets closed, heavy dependency never loaded, zero
-perf cost. Cookies refresh automatically; if Amazon changes its login,
-just re-run `npm run alexa:login`.
+`ALEXA READY` with your speaker's name (e.g. `Kitchen · 1 speaker`).
+`npm run alexa:devices` lists everything on your account — phone apps show
+as `app/other`, real speakers as `SPEAKER`. Only speakers are counted or
+targeted; pin one with `"device": "Kitchen"` under `alexa` in `config.json`.
+Flip the toggle **OFF** and the connector is fully disposed — timers and
+sockets closed, heavy dependency never loaded, zero perf cost. Cookies
+refresh automatically; if Amazon changes its login, just re-run
+`npm run alexa:login`.
 
 > Unofficial API: it can break when Amazon changes things, and voice
 > pickup has a few seconds of poll delay. MatPlay is not affiliated with
 > or endorsed by Amazon.
+
+### Hear MatPlay itself on the Echo (Bluetooth)
+
+The toggle mirrors **controls**, not audio — MatPlay still decodes on your
+machine. To hear it through the Echo, pair the Echo as a Bluetooth
+speaker once:
+
+1. Say *"Alexa, pair"* and pair it from your computer's Bluetooth settings.
+2. Set the Echo as the default audio output (or `pactl set-default-sink`
+   on Linux), then restart MatPlay so `mpg123`/`ffplay` pick up the sink.
+3. Say *"Alexa, connect to my computer"* any time the link drops.
+
+Playback, voice control (`pause on MatPlay`, …), and the visualizer keep
+working — the sound just comes out of the Echo. True Wi-Fi casting
+(MatPlay → Echo with no Bluetooth) needs a cloud skill serving public
+stream URLs and is tracked as a later phase.
 
 ---
 
