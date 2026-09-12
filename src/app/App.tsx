@@ -41,6 +41,7 @@ import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
 import type { Track } from '../library/types.js';
 import type { AlexaStatus } from '../alexa/types.js';
+import { ALEXA_FEATURE_ENABLED } from '../alexa/feature.js';
 import { CastServer } from '../cast/server.js';
 import { mergeInputValue } from '../ui/inputValue.js';
 
@@ -693,13 +694,19 @@ export function App(): React.ReactNode {
       void new AudioRoute().restore(previous, pids).catch(() => undefined);
     }).catch(() => undefined);
   };
+  /**
+   * Feature flag (default OFF): hides the ALEXA settings row and keeps the
+   * whole Echo integration dormant. Enable explicitly with
+   * MATPLAY_ENABLE_ALEXA=1. Code stays in the tree, users can't discover it.
+   */
+  const showAlexa = ALEXA_FEATURE_ENABLED;
   /** Echo UI is visible only while the private BT link is up. Otherwise
    *  the app defaults to normal local playback and hides the Echo. */
-  const echoVisible = config.alexa.enabled && btStatus.state === 'linked';
+  const echoVisible = showAlexa && config.alexa.enabled && btStatus.state === 'linked';
   const echoVisibleRef = useRef(echoVisible);
   echoVisibleRef.current = echoVisible;
   useEffect(() => {
-    if (!config.alexa.enabled) {
+    if (!showAlexa || !config.alexa.enabled) {
       const mac = btMacRef.current;
       btMacRef.current = undefined;
       btLinkedRef.current = false;
@@ -815,7 +822,7 @@ export function App(): React.ReactNode {
       alexaRef.current = undefined;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.alexa.enabled]);
+  }, [config.alexa.enabled, showAlexa]);
 
   /**
    * Mirror to Echo WITHOUT hijacking Spotify.
@@ -1048,7 +1055,7 @@ export function App(): React.ReactNode {
       } else if (has(...UP)) {
         setMenuIndex((index) => Math.max(0, index - 1));
       } else if (has(...DOWN)) {
-        setMenuIndex((index) => Math.min(8, index + 1));
+        setMenuIndex((index) => Math.min(showAlexa ? 8 : 7, index + 1));
       } else if (has(...CONFIRM)) {
         if (menuIndex === 0) {
           setSetupPath(musicRoot);
@@ -1091,9 +1098,20 @@ export function App(): React.ReactNode {
             setDownloadOpen(true);
           }
         } else if (menuIndex === 7) {
-          const enabled = !config.alexa.enabled;
-          updateConfig({ alexa: { ...config.alexa, enabled } });
-          setLibraryNotice(enabled ? 'ALEXA CONNECTING' : 'ALEXA OFF');
+          if (showAlexa) {
+            const enabled = !config.alexa.enabled;
+            updateConfig({ alexa: { ...config.alexa, enabled } });
+            setLibraryNotice(enabled ? 'ALEXA CONNECTING' : 'ALEXA OFF');
+          } else {
+            const reset = defaultConfig();
+            configRef.current = reset;
+            setConfig(reset);
+            saveConfig(reset);
+            setSetupPath(reset.musicRoot);
+            setSetupDiagnostics([]);
+            setSetupOpen(true);
+            setMenuOpen(false);
+          }
         } else {
           const reset = defaultConfig();
           configRef.current = reset;
@@ -1283,7 +1301,7 @@ export function App(): React.ReactNode {
           }}
         />
         <box flexGrow={1} />
-        <text fg={theme.muted}>{libraryNotice ?? meta.streamLabel}{echoVisible ? ` · ECHO ${btStatus.deviceName ?? 'LINKED'}` : config.alexa.enabled ? ` · ECHO ${btStatus.state === 'linking' ? 'LINKING…' : btStatus.state === 'no-bluetooth' ? 'NO BLUETOOTH' : (btStatus.detail ?? alexaStatus.state).toUpperCase()}` : ''}{castUrl ? ` · CAST ${castUrl}` : ''}</text>
+        <text fg={theme.muted}>{libraryNotice ?? meta.streamLabel}{echoVisible ? ` · ECHO ${btStatus.deviceName ?? 'LINKED'}` : showAlexa && config.alexa.enabled ? ` · ECHO ${btStatus.state === 'linking' ? 'LINKING…' : btStatus.state === 'no-bluetooth' ? 'NO BLUETOOTH' : (btStatus.detail ?? alexaStatus.state).toUpperCase()}` : ''}{castUrl ? ` · CAST ${castUrl}` : ''}</text>
       </box>
       {audioError ? (
         <box justifyContent="center" backgroundColor={theme.card}>
@@ -1364,6 +1382,7 @@ export function App(): React.ReactNode {
             syncPlaylist={activeLocalPlaylist}
             syncReady={savedSyncReady}
             alexaEnabled={config.alexa.enabled}
+            showAlexa={showAlexa}
             alexaState={
               !config.alexa.enabled
                 ? 'OFF'
