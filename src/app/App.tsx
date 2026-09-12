@@ -52,8 +52,9 @@ function preferredTheme(target: StitchTheme, config: AppConfig): StitchTheme {
   return config.accentColor === 'auto' ? base : { ...base, accent: config.accentColor };
 }
 
+/** Neutral null cover shown when a track has no embedded art. */
 const FALLBACK_COVER = fileURLToPath(
-  new URL('../../stitch/kalyani-cover.jpg', import.meta.url),
+  new URL('../../assets/cover-fallback.png', import.meta.url),
 );
 
 type PlayerBackend = AudioBackend & {
