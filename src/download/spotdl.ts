@@ -56,6 +56,19 @@ export function parseSpotdlQueries(value: string): string[] {
   return lines.length > 1 ? lines : [input];
 }
 
+export function spotdlSyncFile(musicRoot: string, playlist: string): string {
+  return path.join(
+    path.resolve(musicRoot),
+    sanitizePlaylistName(playlist),
+    '.matplay',
+    'playlist.sync.spotdl',
+  );
+}
+
+export function hasSpotdlSync(musicRoot: string, playlist: string): boolean {
+  return existsSync(spotdlSyncFile(musicRoot, playlist));
+}
+
 export function buildSpotdlInvocation(request: SpotdlRequest): SpotdlInvocation {
   const playlist = sanitizePlaylistName(request.playlist);
   const root = path.resolve(request.musicRoot);
@@ -83,8 +96,7 @@ export function buildSpotdlInvocation(request: SpotdlRequest): SpotdlInvocation 
     };
   }
 
-  const stateDir = path.join(targetDir, '.matplay');
-  const syncFile = path.join(stateDir, 'playlist.sync.spotdl');
+  const syncFile = spotdlSyncFile(root, playlist);
   const hasSavedSync = existsSync(syncFile);
   if (!hasSavedSync && queries.length === 0) {
     throw new Error('Paste a Spotify playlist link to start syncing.');

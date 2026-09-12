@@ -14,6 +14,8 @@ export type SettingsMenuProps = {
   vizGain: number;
   vizMaxHeight: number;
   spotdlInstalled: boolean | undefined;
+  syncPlaylist: string;
+  syncReady: boolean;
 };
 
 function Row({
@@ -53,6 +55,8 @@ export function SettingsMenu({
   vizGain,
   vizMaxHeight,
   spotdlInstalled,
+  syncPlaylist,
+  syncReady,
 }: SettingsMenuProps): React.ReactNode {
   const onOff = (active: boolean): { value: string; valueFg: string } =>
     active
@@ -65,6 +69,7 @@ export function SettingsMenu({
     `VIZ GAIN    ${vizGain.toFixed(1)}`,
     `VIZ HEIGHT  ${Math.round(vizMaxHeight * 100)}%`,
     `SPOTDL      ${spotdlInstalled === undefined ? 'CHECKING' : spotdlInstalled ? 'DOWNLOADS' : 'NOT INSTALLED'}`,
+    `SYNC NOW    ${syncReady ? truncateText(syncPlaylist, 16) : 'SET UP'}`,
     'RESET CONFIG',
   ];
 

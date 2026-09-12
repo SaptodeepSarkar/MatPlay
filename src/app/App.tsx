@@ -36,10 +36,11 @@ import { DiagnosticsPanel } from '../ui/components/DiagnosticsPanel.js';
 import { SettingsButton } from '../ui/components/SettingsButton.js';
 import { SpotdlPanel } from '../ui/components/SpotdlPanel.js';
 import { resetTerminalBackground, syncTerminalBackground } from '../ui/terminalBackground.js';
-import { detectSpotdl, runSpotdl, stopSpotdlJobs, type SpotdlMode } from '../download/spotdl.js';
+import { detectSpotdl, hasSpotdlSync, runSpotdl, stopSpotdlJobs, type SpotdlMode, type SpotdlRequest } from '../download/spotdl.js';
 import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
 import type { Track } from '../library/types.js';
+import { mergeInputValue } from '../ui/inputValue.js';
 
 const WIDE_CONTENT_WIDTH = 75;
 const RESTART_THRESHOLD_MS = 3000;
@@ -214,6 +215,7 @@ export function App(): React.ReactNode {
   const [downloadRunning, setDownloadRunning] = useState(false);
   const [downloadStatus, setDownloadStatus] = useState('Ready. Downloads continue if this panel is closed.');
   const [hasSpotdl, setHasSpotdl] = useState<boolean | undefined>(undefined);
+  const [quitConfirm, setQuitConfirm] = useState(false);
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
   const [lyricsVisible, setLyricsVisible] = useState(true);
   const [lyricsOffset, setLyricsOffset] = useState(0);
@@ -649,18 +651,16 @@ export function App(): React.ReactNode {
     setDownloadOpen(false);
   };
 
-  const startDownload = (): void => {
+  const activeLocalPlaylist = track?.playlist ?? playlistFilter ?? library.playlists[0]?.name ?? 'Downloads';
+  const savedSyncReady = hasSpotdlSync(musicRoot, activeLocalPlaylist);
+
+  const executeSpotdl = (request: SpotdlRequest): void => {
     if (downloadRunning) return;
     setDownloadRunning(true);
     setDownloadStatus('Starting spotDL…');
-    void runSpotdl({
-      musicRoot,
-      playlist: downloadPlaylist,
-      query: downloadQuery,
-      mode: downloadMode,
-      deleteRemoved,
-    }, setDownloadStatus).then((result) => {
+    void runSpotdl(request, setDownloadStatus).then((result) => {
       setDownloadRunning(false);
+      setQuitConfirm(false);
       setDownloadStatus(result.message);
       if (result.ok) {
         setDownloadPlaylist(result.playlist);
@@ -669,6 +669,22 @@ export function App(): React.ReactNode {
       }
     });
   };
+
+  const startDownload = (): void => executeSpotdl({
+    musicRoot,
+    playlist: downloadPlaylist,
+    query: downloadQuery,
+    mode: downloadMode,
+    deleteRemoved,
+  });
+
+  const syncActivePlaylist = (): void => executeSpotdl({
+    musicRoot,
+    playlist: activeLocalPlaylist,
+    query: '',
+    mode: 'sync',
+    deleteRemoved: false,
+  });
 
   const openQueue = (): void => {
     closeOverlays();
@@ -701,6 +717,11 @@ export function App(): React.ReactNode {
   }, []);
 
   const quit = (): void => {
+    if (downloadRunning && !quitConfirm) {
+      setQuitConfirm(true);
+      setDownloadStatus('Download/sync is active. Press q or Ctrl+C again to cancel it and exit.');
+      return;
+    }
     runShutdown();
     try {
       renderer.destroy();
@@ -732,6 +753,12 @@ export function App(): React.ReactNode {
       return;
     }
 
+    if (quitConfirm && has('escape')) {
+      setQuitConfirm(false);
+      setDownloadStatus('Continuing the active download/sync.');
+      return;
+    }
+
     if (setupOpen) {
       if (has(...CONFIRM)) {
         const candidate = scanLibrarySync(setupPath);
@@ -747,7 +774,9 @@ export function App(): React.ReactNode {
     }
 
     if (downloadOpen) {
-      if (has('escape')) {
+      if (has('q') && !key.shift) {
+        quit();
+      } else if (has('escape')) {
         setDownloadOpen(false);
       } else if (has(...UP)) {
         setDownloadField((index) => Math.max(0, index - 1));
@@ -774,7 +803,7 @@ export function App(): React.ReactNode {
       } else if (has(...UP)) {
         setMenuIndex((index) => Math.max(0, index - 1));
       } else if (has(...DOWN)) {
-        setMenuIndex((index) => Math.min(6, index + 1));
+        setMenuIndex((index) => Math.min(7, index + 1));
       } else if (has(...CONFIRM)) {
         if (menuIndex === 0) {
           setSetupPath(musicRoot);
@@ -804,6 +833,18 @@ export function App(): React.ReactNode {
           setDownloadField(0);
           setMenuOpen(false);
           setDownloadOpen(true);
+        } else if (menuIndex === 6) {
+          setMenuOpen(false);
+          if (savedSyncReady) {
+            syncActivePlaylist();
+          } else {
+            setDownloadMode('sync');
+            setDownloadPlaylist(activeLocalPlaylist);
+            setDownloadQuery('');
+            setDownloadStatus('Paste this playlist’s Spotify URL once, then choose SYNC NOW.');
+            setDownloadField(0);
+            setDownloadOpen(true);
+          }
         } else {
           const reset = defaultConfig();
           configRef.current = reset;
@@ -1057,6 +1098,8 @@ export function App(): React.ReactNode {
             vizGain={config.vizGain}
             vizMaxHeight={config.vizMaxHeight}
             spotdlInstalled={hasSpotdl}
+            syncPlaylist={activeLocalPlaylist}
+            syncReady={savedSyncReady}
           />
         </box>
       ) : null}
@@ -1136,9 +1179,26 @@ export function App(): React.ReactNode {
             running={downloadRunning}
             status={downloadStatus}
             theme={theme}
-            onQuery={setDownloadQuery}
-            onPlaylist={setDownloadPlaylist}
+            onQuery={(value) => setDownloadQuery((previous) => mergeInputValue(previous, value))}
+            onPlaylist={(value) => setDownloadPlaylist((previous) => mergeInputValue(previous, value))}
           />
+        </box>
+      ) : null}
+      {quitConfirm ? (
+        <box
+          position="absolute"
+          top={Math.max(0, Math.floor((height - 7) / 2))}
+          left={Math.max(0, Math.floor((width - 62) / 2))}
+          width={Math.min(62, width)}
+          borderStyle="double"
+          borderColor={theme.signal}
+          backgroundColor={theme.card}
+          padding={1}
+          flexDirection="column"
+        >
+          <text fg={theme.signal}><strong>DOWNLOAD OR SYNC IS STILL RUNNING</strong></text>
+          <text fg={theme.text}>Press q or Ctrl+C again to cancel the job and exit.</text>
+          <text fg={theme.muted}>Press ESC to stay in MatPlay and keep it running.</text>
         </box>
       ) : null}
     </box>

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildSpotdlInvocation, parseSpotdlQueries, sanitizePlaylistName } from '../src/download/spotdl.js';
+import { buildSpotdlInvocation, hasSpotdlSync, parseSpotdlQueries, sanitizePlaylistName, spotdlSyncFile } from '../src/download/spotdl.js';
 
 describe('spotDL helper', () => {
   it('builds the MatPlay artist/song folder layout without a shell', () => {
@@ -43,6 +43,8 @@ describe('spotDL helper', () => {
     mkdirSync(stateDir, { recursive: true });
     const syncFile = path.join(stateDir, 'playlist.sync.spotdl');
     writeFileSync(syncFile, '{}');
+    expect(spotdlSyncFile(root, 'Saved')).toBe(syncFile);
+    expect(hasSpotdlSync(root, 'Saved')).toBe(true);
 
     const invocation = buildSpotdlInvocation({
       musicRoot: root,

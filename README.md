@@ -203,6 +203,22 @@ add `-WithSpotdl` to the PowerShell installer on Windows. Then open
 spotDL uses Spotify for metadata and YouTube for audio. Users are responsible
 for complying with copyright law and the services' terms.
 
+### spotDL credit and legal notice
+
+A warm thank-you and full credit to the
+[spotDL team and contributors](https://github.com/spotDL/spotify-downloader)
+for building and maintaining the downloader that powers this optional
+integration. MatPlay is not affiliated with or endorsed by spotDL, Spotify,
+YouTube, or their owners.
+
+MatPlay does **not** promote or encourage downloading copyrighted, licensed,
+or otherwise protected music without permission. This integration is only a
+convenience interface for content the user owns, has permission to download,
+or may lawfully access, such as public-domain and appropriately licensed
+material. Users are solely responsible for following copyright law, local
+law, and every applicable platform's terms. MatPlay provides no media and
+does not bypass DRM or access controls.
+
 ---
 
 ## Keys
