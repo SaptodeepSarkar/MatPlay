@@ -10,7 +10,7 @@
  *   npm run alexa:login -- [--amazon-page=amazon.com] [--port=3001]
  *   MATPLAY_AMAZON_PAGE=amazon.co.uk npm run alexa:login
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -51,6 +51,13 @@ alexa.on('cookie', () => {
 });
 
 console.log(`Starting Alexa login proxy (amazonPage=${amazonPage}, port=${proxyPort})…`);
+let finished = false;
+const finish = (code) => {
+  if (!finished) {
+    finished = true;
+    process.exit(code);
+  }
+};
 alexa.init(
   {
     proxyOnly: true,
@@ -59,16 +66,27 @@ alexa.init(
     amazonPage,
   },
   (err) => {
-    if (err) {
-      console.error('Proxy start failed:', err.message ?? err);
-      process.exit(1);
+    if (!err) {
+      console.log('Login flow finished.');
+      setTimeout(() => finish(0), 500);
       return;
     }
-    const url = `http://localhost:${proxyPort}/`;
-    console.log(`\nOpen this URL in your browser and log in with Amazon:\n\n  ${url}\n`);
-    console.log('Waiting for login… (Ctrl+C to abort)');
-    if (existsSync(configDir())) {
-      console.log(`Cookie will be saved under ${configDir()}/alexa-cookie.json`);
+    const message = err.message ?? String(err);
+    // NOTE: alexa-cookie2 reports a RUNNING proxy as an "error" asking you
+    // to open the URL. That is not a failure — keep waiting for the login.
+    const openMatch = /Please open (http:\/\/\S+)/.exec(message);
+    if (openMatch) {
+      console.log(`\nOpen this URL in your browser and log in with Amazon:\n\n  ${openMatch[1]}\n`);
+      console.log('Use a browser WITHOUT the Alexa app installed, and an Amazon');
+      console.log(`account on ${amazonPage} (else re-run with --amazon-page=...).`);
+      console.log('Keep this terminal open — the cookie saves automatically on success.');
+      console.log('Waiting for login… (Ctrl+C to abort)');
+      return;
     }
+    console.error('Proxy start failed:', message);
+    if (/EADDRINUSE|listen/i.test(message)) {
+      console.error(`Port ${proxyPort} is busy — re-run with --port=<free-port>.`);
+    }
+    finish(1);
   },
 );
