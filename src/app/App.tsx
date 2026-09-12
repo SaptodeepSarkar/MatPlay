@@ -725,10 +725,16 @@ export function App(): React.ReactNode {
           return;
         }
         const cfg = configRef.current.alexa;
-        const echo = await link.resolveEchoMac(cfg.bluetoothMac, cfg.device);
+        const { device: echo, candidates } = await link.resolveEchoMac(cfg.bluetoothMac, cfg.device);
         if (cancelled) return;
         if (!echo) {
-          setBtStatus({ state: 'error', detail: 'Echo not paired — say "Alexa, pair" once, then retry' });
+          const seen = candidates.length > 0
+            ? `seen: ${candidates.map((d) => d.name).join(', ')}`
+            : 'no paired devices seen';
+          setBtStatus({
+            state: 'error',
+            detail: `Echo not found (${seen}) — pair it ("Alexa, pair") or set alexa.bluetoothMac`,
+          });
           return;
         }
         await link.connectEcho(echo.mac);

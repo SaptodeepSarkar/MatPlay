@@ -47,6 +47,34 @@ export function parseInfoConnected(output: string): boolean {
   return /^\s*Connected:\s*yes\s*$/im.test(output);
 }
 
+/** Echo Dot / Echo / Alexa adapter names never equal account names. */
+export function looksLikeEcho(name: string): boolean {
+  return /echo|alexa|\bdot\b/i.test(name);
+}
+
+function tokens(value: string): string[] {
+  return value.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= 2);
+}
+
+/**
+ * Match a configured speaker name against BT adapter names. Pure +
+ * unit-tested. Matches exact, either-direction substring, or any shared
+ * 2+ char token ("RJ" vs "Echo Dot RJ", "Kitchen" vs "Kitchen Echo").
+ */
+export function matchByName(devices: BluetoothDevice[], hint: string): BluetoothDevice | undefined {
+  const needle = hint.trim().toLowerCase();
+  if (!needle) return undefined;
+  const exact = devices.find((d) => d.name.toLowerCase() === needle);
+  if (exact) return exact;
+  const sub = devices.find(
+    (d) => d.name.toLowerCase().includes(needle) || needle.includes(d.name.toLowerCase()),
+  );
+  if (sub) return sub;
+  const hintTokens = new Set(tokens(needle));
+  if (hintTokens.size === 0) return undefined;
+  return devices.find((d) => tokens(d.name).some((t) => hintTokens.has(t)));
+}
+
 function runBlutoothctl(args: string[], timeoutMs = 8000): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile('bluetoothctl', args, { timeout: timeoutMs }, (error, stdout) => {
@@ -77,13 +105,30 @@ export class BluetoothLink {
       await runBlutoothctl(['show'], 5000);
       return true;
     } catch {
-      return false;
+      // No default controller via `show`, but the agent may still list.
+      try {
+        await runBlutoothctl(['devices'], 5000);
+        return true;
+      } catch {
+        return false;
+      }
     }
   }
 
   async listDevices(): Promise<BluetoothDevice[]> {
-    const output = await runBlutoothctl(['devices']);
-    return parseBluetoothctlDevices(output);
+    const seen = new Map<string, BluetoothDevice>();
+    // `devices` covers known devices; `paired-devices` catches entries some
+    // BlueZ versions omit from the former. Merge, dedupe by MAC.
+    for (const args of [['devices'], ['paired-devices']] as const) {
+      try {
+        for (const device of parseBluetoothctlDevices(await runBlutoothctl([...args]))) {
+          if (!seen.has(device.mac)) seen.set(device.mac, device);
+        }
+      } catch {
+        // One source failing must not hide the other.
+      }
+    }
+    return [...seen.values()];
   }
 
   async isConnected(mac: string): Promise<boolean> {
@@ -96,24 +141,48 @@ export class BluetoothLink {
     }
   }
 
-  /** Resolve the Echo MAC: explicit config wins, else match by speaker name. */
-  async resolveEchoMac(configuredMac: string, nameHint: string): Promise<BluetoothDevice | undefined> {
+  /**
+   * Resolve the Echo among paired Bluetooth devices.
+   *
+   * Order (first hit wins, earphones never selected by accident):
+   * 1. Explicit `bluetoothMac` from config.
+   * 2. Speaker-name match against BT names (exact, either-direction
+   *    substring, or shared token — BT names like "Echo Dot-XXX" rarely
+   *    equal the Alexa account name like "Kitchen").
+   * 3. A CONNECTED device whose name looks like an Echo
+   *    (/echo|alexa|dot/i) — covers "already connected, name differs".
+   * 4. Otherwise undefined, with the full candidate list for diagnostics
+   *    so the UI can tell the user exactly what MatPlay sees.
+   */
+  async resolveEchoMac(
+    configuredMac: string,
+    nameHint: string,
+  ): Promise<{ device?: BluetoothDevice; candidates: BluetoothDevice[] }> {
+    let candidates: BluetoothDevice[] = [];
+    try {
+      candidates = await this.listDevices();
+    } catch {
+      candidates = [];
+    }
     const explicit = normalizeMac(configuredMac);
     if (explicit) {
+      const known = candidates.find((d) => d.mac === explicit);
+      return { device: known ?? { mac: explicit, name: nameHint || explicit }, candidates };
+    }
+    const byName = matchByName(candidates, nameHint);
+    if (byName) return { device: byName, candidates };
+    // Fallback: the Echo the user already connected (e.g. an "Echo Dot-XXX"
+    // whose name matches nothing in config). Only Echo-like names qualify —
+    // a connected earphone must never be adopted.
+    for (const candidate of candidates) {
+      if (!looksLikeEcho(candidate.name)) continue;
       try {
-        const devices = await this.listDevices();
-        return devices.find((d) => d.mac === explicit) ?? { mac: explicit, name: nameHint || explicit };
+        if (await this.isConnected(candidate.mac)) return { device: candidate, candidates };
       } catch {
-        return { mac: explicit, name: nameHint || explicit };
+        // Ignore and keep scanning.
       }
     }
-    const needle = nameHint.trim().toLowerCase();
-    if (!needle) return undefined;
-    const devices = await this.listDevices();
-    return (
-      devices.find((d) => d.name.toLowerCase() === needle) ??
-      devices.find((d) => d.name.toLowerCase().includes(needle))
-    );
+    return { device: undefined, candidates };
   }
 
   /** Connect ONLY the Echo MAC. Never disconnects anything else first. */
