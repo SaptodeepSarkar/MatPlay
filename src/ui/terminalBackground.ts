@@ -11,6 +11,8 @@ function canControlTerminal(): boolean {
  */
 export function syncTerminalBackground(color: string): void {
   if (!canControlTerminal()) return;
+  // Swiss-cheese: never emit unvalidated color into an OSC sequence.
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
   try {
     process.stdout.write(`\x1b]11;${color}${OSC_TERMINATOR}`);
   } catch {

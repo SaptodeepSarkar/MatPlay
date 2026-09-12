@@ -41,6 +41,7 @@ import { parseLyrics } from '../lyrics/parseLyrics.js';
 import type { LyricLine } from '../library/types.js';
 import type { Track } from '../library/types.js';
 import type { AlexaStatus } from '../alexa/types.js';
+import { CastServer } from '../cast/server.js';
 import { mergeInputValue } from '../ui/inputValue.js';
 
 const WIDE_CONTENT_WIDTH = 75;
@@ -441,6 +442,7 @@ export function App(): React.ReactNode {
     const current = trackRef.current;
     if (isPlaying) {
       setAudioError(undefined);
+      silenceEcho();
       void backend().play();
       if (current) feed().start(current.audioPath, positionMsRef.current / 1000);
     } else {
@@ -456,11 +458,51 @@ export function App(): React.ReactNode {
     void backend().setVolume(volume);
     updateConfig({ volume });
     presenceRef.current?.updateFlags(volume, shuffle, loopSingle, loopList);
-    if (configRef.current.alexa.enabled && configRef.current.alexa.mirrorToEcho) {
+    if (echoVisibleRef.current && configRef.current.alexa.mirrorToEcho) {
       alexaRef.current?.remoteVolume(volume * 100);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [volume, shuffle, loopList, loopSingle]);
+
+  // Local cast server: serves the current MP3 on loopback (or LAN with
+  // token when explicitly enabled). Stopped on unmount + app shutdown.
+  const castRef = useRef<CastServer | undefined>(undefined);
+  const [castUrl, setCastUrl] = useState('');
+  useEffect(() => {
+    if (!config.cast.enabled) {
+      castRef.current?.stop();
+      castRef.current = undefined;
+      setCastUrl('');
+      return;
+    }
+    const server = new CastServer();
+    castRef.current = server;
+    const url = server.start({
+      port: config.cast.port,
+      lan: config.cast.lan,
+      token: config.cast.token,
+      musicRoot,
+      getCurrentFile: () => trackRef.current?.audioPath,
+      getStatus: () => ({
+        title: metaRef.current.title,
+        artist: metaRef.current.artist,
+        playing: isPlayingRef.current,
+        positionMs: positionMsRef.current,
+        stream: '/stream',
+      }),
+    });
+    setCastUrl(url);
+    const stopCast = (): void => {
+      server.stop();
+    };
+    const unregister = onShutdown(stopCast);
+    return () => {
+      unregister();
+      server.stop();
+      if (castRef.current === server) castRef.current = undefined;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.cast.enabled, config.cast.port, config.cast.lan, musicRoot]);
 
   // Stop everything when the app unmounts.
   useEffect(() => {
@@ -472,6 +514,7 @@ export function App(): React.ReactNode {
       void player.destroy();
       spectrum?.stop();
       feeder?.stop();
+      castRef.current?.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -624,15 +667,33 @@ export function App(): React.ReactNode {
     };
   }, []);
 
-  // Detachable Alexa hybrid (no SmartHome skill, no Lambda):
-  // OFF = this dynamic import never runs, so alexa-remote2 stays out of
-  // memory entirely. ON = load connector, drive Echo as remote + replay
-  // "…on matplay" voice commands into local transport. dispose() on
-  // toggle-off/unmount kills poll timers + push sockets (zero perf cost).
+  // Outbound-only Alexa remote + private Bluetooth link (no Skill/Lambda):
+  // OFF = dynamic imports never run, Echo fully hidden, normal playback.
+  // ON = load connector (pause/stop/volume to silence competitors) AND
+  // auto-connect ONLY the Echo's Bluetooth MAC. Earphones and other links
+  // are never touched. Toggle-off/unmount disconnects just the Echo MAC
+  // and disposes the connector. Alexa can never drive the MatPlay stream.
   const alexaRef = useRef<{ remoteAction: (a: 'play' | 'pause' | 'next' | 'previous' | 'stop') => void; remoteVolume: (v: number) => void; dispose: () => void } | undefined>(undefined);
   const [alexaStatus, setAlexaStatus] = useState<AlexaStatus>({ state: 'off' });
+  const [btStatus, setBtStatus] = useState<{ state: 'off' | 'linking' | 'linked' | 'no-bluetooth' | 'error'; deviceName?: string; detail?: string }>({ state: 'off' });
+  const btMacRef = useRef<string | undefined>(undefined);
+  const btLinkedRef = useRef(false);
+  /** Echo UI is visible only while the private BT link is up. Otherwise
+   *  the app defaults to normal local playback and hides the Echo. */
+  const echoVisible = config.alexa.enabled && btStatus.state === 'linked';
+  const echoVisibleRef = useRef(echoVisible);
+  echoVisibleRef.current = echoVisible;
   useEffect(() => {
     if (!config.alexa.enabled) {
+      const mac = btMacRef.current;
+      btMacRef.current = undefined;
+      btLinkedRef.current = false;
+      setBtStatus({ state: 'off' });
+      if (mac) {
+        void import('../bluetooth/manager.js').then(({ BluetoothLink }) => {
+          void new BluetoothLink().disconnectEcho(mac).catch(() => undefined);
+        }).catch(() => undefined);
+      }
       alexaRef.current?.dispose();
       alexaRef.current = undefined;
       setAlexaStatus({ state: 'off' });
@@ -640,18 +701,11 @@ export function App(): React.ReactNode {
     }
     let cancelled = false;
     setAlexaStatus({ state: 'starting' });
+    setBtStatus({ state: 'linking' });
     void import('../alexa/connector.js').then(({ AlexaConnector }) => {
       if (cancelled) return;
       const connector = new AlexaConnector({
         config: configRef.current.alexa,
-        transport: {
-          play: () => setIsPlaying(true),
-          pause: () => setIsPlaying(false),
-          toggle: () => setIsPlaying((previous) => !previous),
-          next: () => nextRef.current(),
-          previous: () => prevRef.current(),
-          stop: () => setIsPlaying(false),
-        },
         onStatus: (status) => {
           if (!cancelled) setAlexaStatus(status);
         },
@@ -659,18 +713,82 @@ export function App(): React.ReactNode {
       alexaRef.current = connector;
       void connector.start();
     });
+    // Private link: connect ONLY the Echo MAC. Anything already connected
+    // (earphones, etc.) is left exactly as it is.
+    void (async () => {
+      try {
+        const { BluetoothLink } = await import('../bluetooth/manager.js');
+        if (cancelled) return;
+        const link = new BluetoothLink();
+        if (!(await link.isAvailable())) {
+          if (!cancelled) setBtStatus({ state: 'no-bluetooth', detail: 'bluetooth unavailable — local playback' });
+          return;
+        }
+        const cfg = configRef.current.alexa;
+        const echo = await link.resolveEchoMac(cfg.bluetoothMac, cfg.device);
+        if (cancelled) return;
+        if (!echo) {
+          setBtStatus({ state: 'error', detail: 'Echo not paired — say "Alexa, pair" once, then retry' });
+          return;
+        }
+        await link.connectEcho(echo.mac);
+        if (cancelled) {
+          // Lost the race with toggle-off: release the link we just took.
+          void link.disconnectEcho(echo.mac).catch(() => undefined);
+          return;
+        }
+        btMacRef.current = echo.mac;
+        btLinkedRef.current = true;
+        setBtStatus({ state: 'linked', deviceName: echo.name });
+      } catch (error) {
+        if (!cancelled) {
+          setBtStatus({
+            state: 'error',
+            detail: error instanceof Error ? error.message : 'bluetooth link failed — local playback',
+          });
+        }
+      }
+    })();
     return () => {
       cancelled = true;
+      btLinkedRef.current = false;
+      const mac = btMacRef.current;
+      btMacRef.current = undefined;
+      setBtStatus({ state: 'off' });
+      if (mac) {
+        void import('../bluetooth/manager.js').then(({ BluetoothLink }) => {
+          void new BluetoothLink().disconnectEcho(mac).catch(() => undefined);
+        }).catch(() => undefined);
+      }
       alexaRef.current?.dispose();
       alexaRef.current = undefined;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.alexa.enabled]);
 
-  /** Mirror an explicit local transport action to the Echo (no-op unless ready). */
+  /**
+   * Mirror to Echo WITHOUT hijacking Spotify.
+   *
+   * alexa-remote2 play/next/previous drive whatever the Echo is already
+   * playing (usually Spotify) — forwarding them makes the Echo play the
+   * wrong content. So we only ever forward pause/stop (silence the
+   * competitor when MatPlay starts), never play/next/previous.
+   * Audible MatPlay-on-Echo path: Bluetooth (today) or the local cast
+   * server (Settings > CAST, future private skill target).
+   */
   const mirrorToEcho = (action: 'play' | 'pause' | 'next' | 'previous' | 'stop'): void => {
-    if (configRef.current.alexa.enabled && configRef.current.alexa.mirrorToEcho) {
+    // Private-link rule: nothing is sent to the Echo unless OUR Bluetooth
+    // link is up. No link = Echo hidden = Echo untouched.
+    if (!echoVisibleRef.current || !configRef.current.alexa.mirrorToEcho) return;
+    if (action === 'pause' || action === 'stop') {
       alexaRef.current?.remoteAction(action);
+    }
+  };
+
+  /** Silence competing Echo/Spotify audio when MatPlay itself starts. */
+  const silenceEcho = (): void => {
+    if (echoVisibleRef.current && configRef.current.alexa.mirrorToEcho) {
+      alexaRef.current?.remoteAction('pause');
     }
   };
 
@@ -767,6 +885,18 @@ export function App(): React.ReactNode {
       }
       try {
         alexaRef.current?.dispose();
+      } catch {
+        // Ignore.
+      }
+      try {
+        const mac = btMacRef.current;
+        btMacRef.current = undefined;
+        btLinkedRef.current = false;
+        if (mac) {
+          void import('../bluetooth/manager.js').then(({ BluetoothLink }) => {
+            void new BluetoothLink().disconnectEcho(mac).catch(() => undefined);
+          }).catch(() => undefined);
+        }
       } catch {
         // Ignore.
       }
@@ -1000,7 +1130,8 @@ export function App(): React.ReactNode {
         quit();
       }
     } else if (has('space', ' ')) {
-      mirrorToEcho(isPlayingRef.current ? 'pause' : 'play');
+      if (isPlayingRef.current) mirrorToEcho('pause');
+      else silenceEcho();
       setIsPlaying((previous) => !previous);
     } else if (has('?')) {
       const opening = !helpOpen;
@@ -1029,10 +1160,10 @@ export function App(): React.ReactNode {
       setBrowseIndex(0);
       setBrowseOpen(opening);
     } else if (has('n')) {
-      mirrorToEcho('next');
+      silenceEcho();
       next();
     } else if (has('p')) {
-      mirrorToEcho('previous');
+      silenceEcho();
       previous();
     } else if (has(...UP) && lyricsVisible) {
       setLyricsOffset((offset) => Math.max(0, offset - 1));
@@ -1096,7 +1227,7 @@ export function App(): React.ReactNode {
           }}
         />
         <box flexGrow={1} />
-        <text fg={theme.muted}>{libraryNotice ?? meta.streamLabel}{config.alexa.enabled ? ` · ALEXA ${alexaStatus.state.toUpperCase()}` : ''}</text>
+        <text fg={theme.muted}>{libraryNotice ?? meta.streamLabel}{echoVisible ? ` · ECHO ${btStatus.deviceName ?? 'LINKED'}` : config.alexa.enabled ? ` · ECHO ${btStatus.state === 'linking' ? 'LINKING…' : btStatus.state === 'no-bluetooth' ? 'NO BLUETOOTH' : (btStatus.detail ?? alexaStatus.state).toUpperCase()}` : ''}{castUrl ? ` · CAST ${castUrl}` : ''}</text>
       </box>
       {audioError ? (
         <box justifyContent="center" backgroundColor={theme.card}>
@@ -1137,15 +1268,16 @@ export function App(): React.ReactNode {
               loopSingle={loopSingle}
               theme={theme}
               onTogglePlay={() => {
-                mirrorToEcho(isPlayingRef.current ? 'pause' : 'play');
+                if (isPlayingRef.current) mirrorToEcho('pause');
+                else silenceEcho();
                 setIsPlaying((previousState) => !previousState);
               }}
               onPrevious={() => {
-                mirrorToEcho('previous');
+                silenceEcho();
                 previous();
               }}
               onNext={() => {
-                mirrorToEcho('next');
+                silenceEcho();
                 next();
               }}
               onToggleShuffle={() => setShuffle((value) => !value)}
@@ -1177,11 +1309,15 @@ export function App(): React.ReactNode {
             syncReady={savedSyncReady}
             alexaEnabled={config.alexa.enabled}
             alexaState={
-              alexaStatus.state === 'ready'
-                ? (alexaStatus.detail ?? 'READY')
-                : alexaStatus.state === 'needs-login'
-                  ? 'NEEDS LOGIN'
-                  : alexaStatus.state.toUpperCase()
+              !config.alexa.enabled
+                ? 'OFF'
+                : btStatus.state === 'linked'
+                  ? `BT ${btStatus.deviceName ?? 'ECHO'} · ${(alexaStatus.detail ?? alexaStatus.state).toUpperCase()}`
+                  : btStatus.state === 'linking'
+                    ? 'LINKING BT…'
+                    : btStatus.state === 'no-bluetooth'
+                      ? 'NO BLUETOOTH'
+                      : (btStatus.detail ?? alexaStatus.state).toUpperCase()
             }
           />
         </box>

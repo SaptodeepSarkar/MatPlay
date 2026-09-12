@@ -1,27 +1,42 @@
 import { z } from 'zod';
 
 /**
- * Detachable Alexa connector config.
+ * Detachable Alexa remote config — MatPlay is a REMOTE, nothing more.
  *
  * No SmartHome skill, no Lambda, no public HTTPS needed.
- * Hybrid is 100% `alexa-remote2` (same private API as the Alexa mobile app):
- *  - OUTBOUND MatPlay -> Echo: sendCommand(play/pause/next/previous/volume)
- *  - INBOUND  Echo -> MatPlay: poll voice history (getCustomerHistoryRecords)
- *    for utterances containing "matplay" and map them to local transport.
+ * 100% `alexa-remote2` (same private API as the Alexa mobile app):
+ *  - OUTBOUND MatPlay -> Echo: pause/stop/volume only, so competing audio
+ *    (Spotify) is silenced when MatPlay plays. play/next/previous are NEVER
+ *    forwarded — they would drive the Echo's own queue with wrong content.
+ *  - INBOUND REMOVED: Alexa/voice can no longer control the MatPlay stream.
+ *    No voice-history polling, no utterance replay, no transport injection.
+ *
+ * Audible MatPlay-on-Echo path is the private Bluetooth link (auto-managed
+ * below). Nothing else may claim the Echo while MatPlay owns it.
  */
 export const AlexaConfigSchema = z.object({
   /** Master switch. OFF = module never imported, zero timers/sockets. */
   enabled: z.boolean().default(false),
   /** Target Echo ("Kitchen", serial, or "" = first controllable device). */
-  device: z.string().default(''),
+  device: z.string().max(128).default(''),
   /** Must match the Amazon domain the cookie was captured on. */
-  amazonPage: z.string().default('amazon.com'),
-  /** Voice-history poll interval. 3500-5000ms avoids rate limits. */
-  pollMs: z.number().min(2000).max(15000).default(4000),
-  /** When true, "pause on matplay / next on matplay" drives local transport. */
-  respondToVoice: z.boolean().default(true),
-  /** When true, local space/n/p also mirrors to the Echo. */
+  amazonPage: z
+    .string()
+    .regex(/^amazon\.[a-z.]{2,24}$/)
+    .default('amazon.com'),
+  /**
+   * When true, MatPlay silences competing Echo audio (pause/stop only).
+   * Audible MatPlay-on-Echo is the private Bluetooth link, never a
+   * forwarded Spotify command.
+   */
   mirrorToEcho: z.boolean().default(true),
+  /**
+   * Bluetooth MAC of the Echo for the private link (e.g. "AA:BB:CC:DD:EE:FF").
+   * Empty = auto-discover by matching the `device` name among paired
+   * bluetoothctl devices. Only this MAC is ever connected/disconnected —
+   * earphones and other devices are never touched.
+   */
+  bluetoothMac: z.string().max(32).default(''),
 });
 
 export type AlexaConfig = z.infer<typeof AlexaConfigSchema>;
@@ -31,9 +46,8 @@ export function defaultAlexaConfig(): AlexaConfig {
     enabled: false,
     device: '',
     amazonPage: 'amazon.com',
-    pollMs: 4000,
-    respondToVoice: true,
     mirrorToEcho: true,
+    bluetoothMac: '',
   };
 }
 
@@ -47,19 +61,9 @@ export type AlexaConnectionState =
 export type AlexaStatus = {
   state: AlexaConnectionState;
   detail?: string;
-  lastVoiceText?: string;
-  lastVoiceAt?: number;
   deviceCount?: number;
 };
 
-/** Minimal transport surface — same shape as PresenceControls. */
-export type AlexaTransport = {
-  play: () => void;
-  pause: () => void;
-  toggle: () => void;
-  next: () => void;
-  previous: () => void;
-  stop: () => void;
-};
-
+/** Outbound-only remote actions. play/next/previous are accepted by the
+ *  type but never sent by MatPlay (see mirror policy in App). */
 export type AlexaRemoteAction = 'play' | 'pause' | 'next' | 'previous' | 'stop';

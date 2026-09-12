@@ -1,10 +1,34 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
-import { closeSync, existsSync, openSync } from 'node:fs';
+import { closeSync, existsSync, fstatSync, lstatSync, mkdirSync, openSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { constants } from 'node:fs';
+import { hasProtocolBreakers } from '../security/sanitize.js';
+
+function fifoBaseDir(): string {
+  // Per-user runtime dir first (0700, no cross-user snooping), tmp fallback.
+  const runtime = process.env.XDG_RUNTIME_DIR;
+  if (runtime) return path.join(runtime, `matplay-${process.getuid?.() ?? 'u'}`);
+  const tmp = path.join(os.tmpdir(), `matplay-${process.getuid?.() ?? process.pid}`);
+  return tmp;
+}
 
 export function spectrumFifoPath(): string {
-  return path.join(os.tmpdir(), 'matplay-cava.fifo');
+  return path.join(fifoBaseDir(), 'cava.fifo');
+}
+
+/** True only for an owned FIFO (no symlink, no regular file, no foreign owner). */
+function isOwnedFifo(fifoPath: string): boolean {
+  try {
+    const st = lstatSync(fifoPath);
+    if (!st.isFIFO()) return false;
+    if (typeof st.uid === 'number' && typeof process.getuid === 'function') {
+      if (st.uid !== process.getuid()) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -22,9 +46,15 @@ export class SpectrumFeed {
   /** Create the FIFO if possible. False on platforms without `mkfifo`. */
   static ensureFifo(fifoPath = spectrumFifoPath()): boolean {
     try {
-      if (existsSync(fifoPath)) return true;
-      execFileSync('mkfifo', [fifoPath], { stdio: 'ignore' });
-      return true;
+      if (hasProtocolBreakers(fifoPath)) return false;
+      try {
+        mkdirSync(path.dirname(fifoPath), { recursive: true, mode: 0o700 });
+      } catch {
+        // Continue; mkfifo/open will fail closed below.
+      }
+      if (existsSync(fifoPath)) return isOwnedFifo(fifoPath);
+      execFileSync('mkfifo', ['--', fifoPath], { stdio: 'ignore' });
+      return isOwnedFifo(fifoPath);
     } catch {
       return false;
     }
@@ -37,11 +67,17 @@ export class SpectrumFeed {
   start(audioPath: string, offsetSec: number): void {
     this.stop();
     if (process.env.MATPLAY_NO_AUDIO === '1') return;
+    if (hasProtocolBreakers(audioPath)) return;
     const fifo = spectrumFifoPath();
+    if (!isOwnedFifo(fifo)) return;
     let fd: number;
     try {
-      if (!existsSync(fifo)) return;
-      fd = openSync(fifo, 'r+');
+      // O_NOFOLLOW closes the symlink-swap TOCTOU; fstat re-verifies FIFO.
+      fd = openSync(fifo, constants.O_RDWR | constants.O_NOFOLLOW);
+      if (!fstatSync(fd).isFIFO()) {
+        try { closeSync(fd); } catch { /* ignore */ }
+        return;
+      }
     } catch {
       return;
     }

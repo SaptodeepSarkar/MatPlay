@@ -221,19 +221,22 @@ does not bypass DRM or access controls.
 
 ---
 
-## Optional Alexa remote (no SmartHome skill)
+## Optional Echo output (remote-only + private Bluetooth, no skill)
 
-MatPlay can talk to your Echo in both directions without any Alexa skill,
-Lambda, or cloud service, using the same private API as the Alexa mobile
-app ([alexa-remote2](https://github.com/Apollon77/alexa-remote)):
+MatPlay treats your Echo as a **private speaker**, not a controller.
+It is strictly a **remote**: MatPlay can silence the Echo, but Alexa and
+voice commands can **never** control the MatPlay stream — no voice-history
+polling, no utterance replay, no inbound control path at all. This uses the
+same private API as the Alexa mobile app
+([alexa-remote2](https://github.com/Apollon77/alexa-remote)), with no Alexa
+skill, Lambda, or cloud service:
 
-- **MatPlay → Echo (remote):** with mirroring on, `space` / `n` / `p` /
-  volume keys in MatPlay also drive the Echo, so the room follows the TUI.
-- **Echo → MatPlay (voice):** say *"Alexa, pause on MatPlay"*,
-  *"next on MatPlay"*, *"go back on MatPlay"*, *"resume MatPlay"* — MatPlay
-  polls your Alexa voice history for utterances mentioning MatPlay and
-  replays them into local playback. Plain *"pause"* / *"next"* (Spotify,
-  etc.) are never hijacked.
+- **MatPlay → Echo (remote only):** while playing, MatPlay sends
+  `pause`/`stop`/volume to the Echo purely to silence competing audio
+  (Spotify). `play`/`next`/`previous` are never forwarded — forwarding them
+  would drive the Echo's own queue with the wrong content.
+- **Echo → MatPlay:** removed. There is no voice control. Saying anything
+  "on MatPlay" to Alexa does nothing, by design.
 
 Setup (one time):
 
@@ -242,35 +245,39 @@ npm run alexa:login          # opens a browser login, saves the cookie to
                              # ~/.config/matplay/alexa-cookie.json
 ```
 
-Then open **Settings → ALEXA** and flip it **ON**. The top bar shows
-`ALEXA READY` with your speaker's name (e.g. `Kitchen · 1 speaker`).
-`npm run alexa:devices` lists everything on your account — phone apps show
-as `app/other`, real speakers as `SPEAKER`. Only speakers are counted or
-targeted; pin one with `"device": "Kitchen"` under `alexa` in `config.json`.
-Flip the toggle **OFF** and the connector is fully disposed — timers and
-sockets closed, heavy dependency never loaded, zero perf cost. Cookies
-refresh automatically; if Amazon changes its login, just re-run
-`npm run alexa:login`.
-
-> Unofficial API: it can break when Amazon changes things, and voice
-> pickup has a few seconds of poll delay. MatPlay is not affiliated with
-> or endorsed by Amazon.
-
-### Hear MatPlay itself on the Echo (Bluetooth)
-
-The toggle mirrors **controls**, not audio — MatPlay still decodes on your
-machine. To hear it through the Echo, pair the Echo as a Bluetooth
-speaker once:
+Then pair the Echo as a Bluetooth speaker **once**:
 
 1. Say *"Alexa, pair"* and pair it from your computer's Bluetooth settings.
 2. Set the Echo as the default audio output (or `pactl set-default-sink`
    on Linux), then restart MatPlay so `mpg123`/`ffplay` pick up the sink.
-3. Say *"Alexa, connect to my computer"* any time the link drops.
 
-Playback, voice control (`pause on MatPlay`, …), and the visualizer keep
-working — the sound just comes out of the Echo. True Wi-Fi casting
-(MatPlay → Echo with no Bluetooth) needs a cloud skill serving public
-stream URLs and is tracked as a later phase.
+Then open **Settings → ALEXA** and flip it **ON**:
+
+- MatPlay **auto-connects only the Echo's Bluetooth MAC** and shows
+  `ECHO <name>` in the top bar with the chosen link in Settings.
+- Your **earphones and other Bluetooth devices are never touched** — no
+  disconnects, no re-routing. Only the Echo MAC is ever connected or
+  disconnected by MatPlay.
+- While the link is up, nothing else is driven to the Echo: the remote
+  only silences competitors so the room hears MatPlay alone.
+- Flip the toggle **OFF** and MatPlay **disconnects just the Echo**,
+  disposes the connector (sockets closed, heavy dependency unloaded),
+  hides every Echo trace from the UI, and defaults to normal local
+  playback. Cookies refresh automatically; if Amazon changes its login,
+  just re-run `npm run alexa:login`.
+- If Bluetooth is unavailable (or the Echo isn't paired yet), the Echo
+  stays **hidden** and MatPlay behaves exactly as if Alexa didn't exist.
+
+Pin targets in `config.json` under `alexa`: `"device": "Kitchen"`
+(remote target) and optionally `"bluetoothMac": "AA:BB:CC:DD:EE:FF"`
+(private link; empty auto-discovers by speaker name).
+`npm run alexa:devices` lists everything on your account — phone apps show
+as `app/other`, real speakers as `SPEAKER`.
+
+> Unofficial API: it can break when Amazon changes things. MatPlay is not
+> affiliated with or endorsed by Amazon. True Wi-Fi casting (MatPlay →
+> Echo with no Bluetooth) needs a cloud skill serving public stream URLs
+> and is tracked as a later phase.
 
 ---
 

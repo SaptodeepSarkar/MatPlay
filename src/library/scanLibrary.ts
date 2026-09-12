@@ -1,8 +1,29 @@
-import { readdirSync, statSync } from 'node:fs';
+import { lstatSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { artistId, playlistId, trackId } from '../utils/ids.js';
 import { isAudioFile, isHidden, isLrcFile, isLyricsFile } from '../utils/paths.js';
+import { isWithinDir } from '../security/sanitize.js';
 import { DiagnosticCodes, makeDiagnostic } from './diagnostics.js';
+
+const MAX_ENTRIES_PER_DIR = 5000;
+const MAX_DIAGNOSTICS = 200;
+
+function pushDiagnostic(diagnostics: Diagnostic[], diagnostic: Diagnostic): void {
+  if (diagnostics.length >= MAX_DIAGNOSTICS) return;
+  diagnostics.push(diagnostic);
+}
+
+/** Resolve and verify a child stays inside the library root (symlink-safe). */
+function containedPath(root: string, ...segments: string[]): string | undefined {
+  try {
+    const candidate = path.join(root, ...segments);
+    const resolved = realpathSync(candidate);
+    if (resolved === root || isWithinDir(root, resolved, path.sep)) return resolved;
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
 import type {
   Artist,
   Diagnostic,
@@ -19,22 +40,32 @@ function sortedNames(names: string[]): string[] {
 
 function readDirNames(dir: string, diagnostics: Diagnostic[]): string[] | undefined {
   try {
-    return readdirSync(dir);
-  } catch {
-    diagnostics.push(
-      makeDiagnostic(
+    const names = readdirSync(dir);
+    if (names.length > MAX_ENTRIES_PER_DIR) {
+      pushDiagnostic(diagnostics, makeDiagnostic(
         'warning',
         DiagnosticCodes.UNREADABLE_DIRECTORY,
-        `Could not read directory, skipping.`,
+        `Directory has ${names.length} entries; truncating to ${MAX_ENTRIES_PER_DIR}.`,
         dir,
-      ),
-    );
+      ));
+      return names.slice(0, MAX_ENTRIES_PER_DIR);
+    }
+    return names;
+  } catch {
+    pushDiagnostic(diagnostics, makeDiagnostic(
+      'warning',
+      DiagnosticCodes.UNREADABLE_DIRECTORY,
+      `Could not read directory, skipping.`,
+      dir,
+    ));
     return undefined;
   }
 }
 
 function isDirectory(entryPath: string): boolean {
   try {
+    // lstat: never follow a symlink here; containment is enforced by callers.
+    if (lstatSync(entryPath).isSymbolicLink()) return false;
     return statSync(entryPath).isDirectory();
   } catch {
     return false;
@@ -52,6 +83,12 @@ export function scanLibrarySync(musicRoot: string): Library {
   const diagnostics: Diagnostic[] = [];
   const playlists: Playlist[] = [];
 
+  let root: string;
+  try {
+    root = realpathSync(musicRoot);
+  } catch {
+    root = musicRoot;
+  }
   if (!isDirectory(musicRoot)) {
     let code: string = DiagnosticCodes.ROOT_MISSING;
     try {
@@ -60,33 +97,29 @@ export function scanLibrarySync(musicRoot: string): Library {
     } catch {
       code = DiagnosticCodes.ROOT_MISSING;
     }
-    diagnostics.push(
-      makeDiagnostic(
-        'error',
-        code,
-        `Music root is not a readable directory: ${musicRoot}`,
-        musicRoot,
-      ),
-    );
+    pushDiagnostic(diagnostics, makeDiagnostic(
+      'error',
+      code,
+      `Music root is not a readable directory: ${musicRoot}`,
+      musicRoot,
+    ));
     return { playlists, diagnostics };
   }
 
   const firstLevel = readDirNames(musicRoot, diagnostics) ?? [];
   for (const playlistName of sortedNames(firstLevel)) {
     if (isHidden(playlistName)) continue;
-    const playlistPath = path.join(musicRoot, playlistName);
-    if (!isDirectory(playlistPath)) {
-      diagnostics.push(
-        makeDiagnostic(
-          'warning',
-          DiagnosticCodes.NOT_A_PLAYLIST,
-          `Expected a playlist folder, found a file. Ignoring.`,
-          playlistPath,
-        ),
-      );
+    const playlistPath = containedPath(root, playlistName);
+    if (!playlistPath || !isDirectory(playlistPath)) {
+      pushDiagnostic(diagnostics, makeDiagnostic(
+        'warning',
+        DiagnosticCodes.NOT_A_PLAYLIST,
+        playlistPath ? `Expected a playlist folder, found a file. Ignoring.` : `Playlist escapes the music library; ignoring symlink.`,
+        path.join(musicRoot, playlistName),
+      ));
       continue;
     }
-    playlists.push(scanPlaylist(playlistPath, playlistName, diagnostics));
+    playlists.push(scanPlaylist(playlistPath, root, playlistName, diagnostics));
   }
 
   return { playlists, diagnostics };
@@ -94,6 +127,7 @@ export function scanLibrarySync(musicRoot: string): Library {
 
 function scanPlaylist(
   playlistPath: string,
+  root: string,
   playlistName: string,
   diagnostics: Diagnostic[],
 ): Playlist {
@@ -103,42 +137,37 @@ function scanPlaylist(
   const entries = readDirNames(playlistPath, diagnostics) ?? [];
   for (const artistName of sortedNames(entries)) {
     if (isHidden(artistName)) continue;
-    const artistPath = path.join(playlistPath, artistName);
-    if (!isDirectory(artistPath)) {
-      diagnostics.push(
-        makeDiagnostic(
-          'info',
-          DiagnosticCodes.UNEXPECTED_ENTRY,
-          `Expected an artist folder, ignoring file.`,
-          artistPath,
-        ),
-      );
+    const relArtist = path.relative(root, path.join(playlistPath, artistName));
+    const artistPath = containedPath(root, relArtist);
+    if (!artistPath || !isDirectory(artistPath)) {
+      pushDiagnostic(diagnostics, makeDiagnostic(
+        'info',
+        DiagnosticCodes.UNEXPECTED_ENTRY,
+        artistPath ? `Expected an artist folder, ignoring file.` : `Artist escapes the music library; ignoring symlink.`,
+        path.join(playlistPath, artistName),
+      ));
       continue;
     }
-    const artistTracks = scanArtist(artistPath, playlistName, artistName, diagnostics);
+    const artistTracks = scanArtist(artistPath, root, playlistName, artistName, diagnostics);
     if (artistTracks.length === 0) {
-      diagnostics.push(
-        makeDiagnostic(
-          'warning',
-          DiagnosticCodes.EMPTY_ARTIST,
-          `Artist folder has no playable songs: ${artistName}`,
-          artistPath,
-        ),
-      );
+      pushDiagnostic(diagnostics, makeDiagnostic(
+        'warning',
+        DiagnosticCodes.EMPTY_ARTIST,
+        `Artist folder has no playable songs: ${artistName}`,
+        artistPath,
+      ));
     }
     artists.push({ id: artistId(playlistName, artistName), name: artistName, tracks: artistTracks });
     tracks.push(...artistTracks);
   }
 
   if (artists.length === 0) {
-    diagnostics.push(
-      makeDiagnostic(
-        'warning',
-        DiagnosticCodes.EMPTY_PLAYLIST,
-        `Playlist folder has no artists: ${playlistName}`,
-        playlistPath,
-      ),
-    );
+    pushDiagnostic(diagnostics, makeDiagnostic(
+      'warning',
+      DiagnosticCodes.EMPTY_PLAYLIST,
+      `Playlist folder has no artists: ${playlistName}`,
+      playlistPath,
+    ));
   }
 
   return { id: playlistId(playlistName), name: playlistName, artists, tracks };
@@ -146,6 +175,7 @@ function scanPlaylist(
 
 function scanArtist(
   artistPath: string,
+  root: string,
   playlistName: string,
   artistName: string,
   diagnostics: Diagnostic[],
@@ -155,16 +185,15 @@ function scanArtist(
 
   for (const songName of sortedNames(entries)) {
     if (isHidden(songName)) continue;
-    const songPath = path.join(artistPath, songName);
-    if (!isDirectory(songPath)) {
-      diagnostics.push(
-        makeDiagnostic(
-          'info',
-          DiagnosticCodes.UNEXPECTED_ENTRY,
-          `Expected a song folder, ignoring file.`,
-          songPath,
-        ),
-      );
+    const relSong = path.relative(root, path.join(artistPath, songName));
+    const songPath = containedPath(root, relSong);
+    if (!songPath || !isDirectory(songPath)) {
+      pushDiagnostic(diagnostics, makeDiagnostic(
+        'info',
+        DiagnosticCodes.UNEXPECTED_ENTRY,
+        songPath ? `Expected a song folder, ignoring file.` : `Song escapes the music library; ignoring symlink.`,
+        path.join(artistPath, songName),
+      ));
       continue;
     }
     const track = scanSong(songPath, playlistName, artistName, songName, diagnostics);
@@ -190,37 +219,31 @@ function scanSong(
   );
 
   if (audioFiles.length === 0) {
-    diagnostics.push(
-      makeDiagnostic(
-        'warning',
-        DiagnosticCodes.NO_AUDIO,
-        `Song folder has no audio file, skipping: ${songName}`,
-        songPath,
-      ),
-    );
+    pushDiagnostic(diagnostics, makeDiagnostic(
+      'warning',
+      DiagnosticCodes.NO_AUDIO,
+      `Song folder has no audio file, skipping: ${songName}`,
+      songPath,
+    ));
     return undefined;
   }
   if (audioFiles.length > 1) {
-    diagnostics.push(
-      makeDiagnostic(
-        'warning',
-        DiagnosticCodes.MULTIPLE_AUDIO,
-        `Song folder has ${audioFiles.length} audio files, using first: ${audioFiles[0]}`,
-        songPath,
-      ),
-    );
+    pushDiagnostic(diagnostics, makeDiagnostic(
+      'warning',
+      DiagnosticCodes.MULTIPLE_AUDIO,
+      `Song folder has ${audioFiles.length} audio files, using first: ${audioFiles[0]}`,
+      songPath,
+    ));
   }
 
   let lyricsPath: string | undefined;
   if (lyricsFiles.length > 1) {
-    diagnostics.push(
-      makeDiagnostic(
-        'warning',
-        DiagnosticCodes.MULTIPLE_LYRICS,
-        `Song folder has ${lyricsFiles.length} lyrics files, preferring .lrc.`,
-        songPath,
-      ),
-    );
+    pushDiagnostic(diagnostics, makeDiagnostic(
+      'warning',
+      DiagnosticCodes.MULTIPLE_LYRICS,
+      `Song folder has ${lyricsFiles.length} lyrics files, preferring .lrc.`,
+      songPath,
+    ));
   }
   const preferred =
     lyricsFiles.find((name) => isLrcFile(path.join(songPath, name))) ?? lyricsFiles[0];

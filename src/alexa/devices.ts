@@ -25,6 +25,9 @@ export function pickMusicDevice(
     if (exact) return exact;
     const partial = devices.find((d) => d.name.toLowerCase().includes(needle));
     if (partial) return partial;
+    // Fail-closed: an explicit pin that matches nothing must not fall
+    // through to the wrong room's speaker.
+    return undefined;
   }
   const speakers = devices.filter((d) => d.music);
   const pool = speakers.length > 0 ? speakers : devices;
