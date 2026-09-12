@@ -221,6 +221,39 @@ does not bypass DRM or access controls.
 
 ---
 
+## Optional Alexa remote (no SmartHome skill)
+
+MatPlay can talk to your Echo in both directions without any Alexa skill,
+Lambda, or cloud service, using the same private API as the Alexa mobile
+app ([alexa-remote2](https://github.com/Apollon77/alexa-remote)):
+
+- **MatPlay → Echo (remote):** with mirroring on, `space` / `n` / `p` /
+  volume keys in MatPlay also drive the Echo, so the room follows the TUI.
+- **Echo → MatPlay (voice):** say *"Alexa, pause on MatPlay"*,
+  *"next on MatPlay"*, *"go back on MatPlay"*, *"resume MatPlay"* — MatPlay
+  polls your Alexa voice history for utterances mentioning MatPlay and
+  replays them into local playback. Plain *"pause"* / *"next"* (Spotify,
+  etc.) are never hijacked.
+
+Setup (one time):
+
+```sh
+npm run alexa:login          # opens a browser login, saves the cookie to
+                             # ~/.config/matplay/alexa-cookie.json
+```
+
+Then open **Settings → ALEXA** and flip it **ON**. The top bar shows
+`ALEXA READY` / `NEEDS LOGIN`. Flip it **OFF** and the connector is fully
+disposed — timers and sockets closed, heavy dependency never loaded, zero
+perf cost. Cookies refresh automatically; if Amazon changes its login,
+just re-run `npm run alexa:login`.
+
+> Unofficial API: it can break when Amazon changes things, and voice
+> pickup has a few seconds of poll delay. MatPlay is not affiliated with
+> or endorsed by Amazon.
+
+---
+
 ## Keys
 
 <details>
