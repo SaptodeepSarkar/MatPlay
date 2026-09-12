@@ -57,10 +57,12 @@ type AlexaRemoteInstance = {
 /**
  * Outbound-only Alexa remote — MatPlay drives the Echo, never the reverse.
  *
- * OUTBOUND: remoteAction() sends pause/stop/volume to the Echo via
- *   alexa-remote2 sendCommand (same endpoint the Alexa app uses), purely to
- *   silence competing audio when MatPlay plays over the private Bluetooth
- *   link. play/next/previous are never forwarded (wrong-content hijack).
+ * OUTBOUND: remoteAction() sends pause/stop to the Echo via alexa-remote2
+ *   sendCommand (same endpoint the Alexa app uses), purely to silence
+ *   competing Spotify audio when MatPlay plays over the private Bluetooth
+ *   link. play/next/previous/volume are never forwarded — they would drive
+ *   the Echo's own player (wrong content, "Spotify remote" feel). Volume
+ *   keys control only MatPlay's local decoder volume.
  * INBOUND: removed. No voice-history polling, no utterance replay. Alexa
  *   cannot control the MatPlay stream, by design.
  *
@@ -109,18 +111,6 @@ export class AlexaConnector {
       alexa.sendCommand(target, command, value, () => undefined);
     } catch {
       // Best-effort remote; local playback is authoritative.
-    }
-  }
-
-  remoteVolume(level0to100: number): void {
-    const alexa = this.alexa;
-    if (!alexa || this.status.state !== 'ready') return;
-    const target = this.resolveTarget(alexa);
-    if (!target) return;
-    try {
-      alexa.sendCommand(target, 'volume', Math.max(0, Math.min(100, Math.round(level0to100))), () => undefined);
-    } catch {
-      // Ignore.
     }
   }
 

@@ -458,9 +458,9 @@ export function App(): React.ReactNode {
     void backend().setVolume(volume);
     updateConfig({ volume });
     presenceRef.current?.updateFlags(volume, shuffle, loopSingle, loopList);
-    if (echoVisibleRef.current && configRef.current.alexa.mirrorToEcho) {
-      alexaRef.current?.remoteVolume(volume * 100);
-    }
+    // Deliberately no Echo volume mirroring: volume keys drive ONLY the
+    // local decoder. Touching the Echo's volume drives its Spotify player
+    // and makes MatPlay feel like a Spotify remote.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [volume, shuffle, loopList, loopSingle]);
 
@@ -673,11 +673,26 @@ export function App(): React.ReactNode {
   // auto-connect ONLY the Echo's Bluetooth MAC. Earphones and other links
   // are never touched. Toggle-off/unmount disconnects just the Echo MAC
   // and disposes the connector. Alexa can never drive the MatPlay stream.
-  const alexaRef = useRef<{ remoteAction: (a: 'play' | 'pause' | 'next' | 'previous' | 'stop') => void; remoteVolume: (v: number) => void; dispose: () => void } | undefined>(undefined);
+  const alexaRef = useRef<{ remoteAction: (a: 'play' | 'pause' | 'next' | 'previous' | 'stop') => void; dispose: () => void } | undefined>(undefined);
   const [alexaStatus, setAlexaStatus] = useState<AlexaStatus>({ state: 'off' });
-  const [btStatus, setBtStatus] = useState<{ state: 'off' | 'linking' | 'linked' | 'no-bluetooth' | 'error'; deviceName?: string; detail?: string }>({ state: 'off' });
+  const [btStatus, setBtStatus] = useState<{ state: 'off' | 'linking' | 'linked' | 'no-bluetooth' | 'error'; deviceName?: string; detail?: string; audioNote?: string }>({ state: 'off' });
   const btMacRef = useRef<string | undefined>(undefined);
   const btLinkedRef = useRef(false);
+  /** Restore token for the Echo audio route (saved default sink). */
+  const audioRestoreRef = useRef<string | undefined>(undefined);
+  /**
+   * Restore the pre-link default sink and move our decoder streams back.
+   * Only ever moves MatPlay-owned PIDs — other apps' audio is untouched.
+   */
+  const restoreAudioRoute = (): void => {
+    const previous = audioRestoreRef.current;
+    audioRestoreRef.current = undefined;
+    if (previous === undefined) return;
+    const pids = backendRef.current?.childPids() ?? [];
+    void import('../platform/audioRoute.js').then(({ AudioRoute }) => {
+      void new AudioRoute().restore(previous, pids).catch(() => undefined);
+    }).catch(() => undefined);
+  };
   /** Echo UI is visible only while the private BT link is up. Otherwise
    *  the app defaults to normal local playback and hides the Echo. */
   const echoVisible = config.alexa.enabled && btStatus.state === 'linked';
@@ -688,6 +703,7 @@ export function App(): React.ReactNode {
       const mac = btMacRef.current;
       btMacRef.current = undefined;
       btLinkedRef.current = false;
+      restoreAudioRoute();
       setBtStatus({ state: 'off' });
       if (mac) {
         void import('../bluetooth/manager.js').then(({ BluetoothLink }) => {
@@ -745,7 +761,35 @@ export function App(): React.ReactNode {
         }
         btMacRef.current = echo.mac;
         btLinkedRef.current = true;
-        setBtStatus({ state: 'linked', deviceName: echo.name });
+        // Link is up: kick any Spotify stream off the Echo immediately so
+        // the room hears MatPlay's ffmpeg audio, not the old queue. The
+        // connector may not be ready yet — best-effort, play-path kicks
+        // cover the rest.
+        try {
+          if (configRef.current.alexa.mirrorToEcho) alexaRef.current?.remoteAction('pause');
+        } catch {
+          // Ignore.
+        }
+        // Route MatPlay's own decoders to the Echo sink. Default sink
+        // switches so new streams land on the Echo; only OUR child PIDs
+        // are moved — earphones and other apps keep their audio.
+        let audioNote: string | undefined;
+        try {
+          const { AudioRoute } = await import('../platform/audioRoute.js');
+          const router = new AudioRoute();
+          if (await router.isAvailable()) {
+            const pids = backendRef.current?.childPids() ?? [];
+            const { previousSink } = await router.routeToEcho(echo.mac, pids);
+            audioRestoreRef.current = previousSink;
+            audioNote = 'ffmpeg → Echo';
+          } else {
+            audioNote = 'audio manual — set Echo as output sink';
+          }
+        } catch {
+          audioNote = 'audio manual — set Echo as output sink';
+        }
+        if (cancelled) return;
+        setBtStatus({ state: 'linked', deviceName: echo.name, audioNote });
       } catch (error) {
         if (!cancelled) {
           setBtStatus({
@@ -758,6 +802,7 @@ export function App(): React.ReactNode {
     return () => {
       cancelled = true;
       btLinkedRef.current = false;
+      restoreAudioRoute();
       const mac = btMacRef.current;
       btMacRef.current = undefined;
       setBtStatus({ state: 'off' });
@@ -891,6 +936,11 @@ export function App(): React.ReactNode {
       }
       try {
         alexaRef.current?.dispose();
+      } catch {
+        // Ignore.
+      }
+      try {
+        restoreAudioRoute();
       } catch {
         // Ignore.
       }
@@ -1318,7 +1368,7 @@ export function App(): React.ReactNode {
               !config.alexa.enabled
                 ? 'OFF'
                 : btStatus.state === 'linked'
-                  ? `BT ${btStatus.deviceName ?? 'ECHO'} · ${(alexaStatus.detail ?? alexaStatus.state).toUpperCase()}`
+                  ? `BT ${btStatus.deviceName ?? 'ECHO'} · ${btStatus.audioNote ?? (alexaStatus.detail ?? alexaStatus.state).toUpperCase()}`
                   : btStatus.state === 'linking'
                     ? 'LINKING BT…'
                     : btStatus.state === 'no-bluetooth'

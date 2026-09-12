@@ -5,9 +5,10 @@ import { z } from 'zod';
  *
  * No SmartHome skill, no Lambda, no public HTTPS needed.
  * 100% `alexa-remote2` (same private API as the Alexa mobile app):
- *  - OUTBOUND MatPlay -> Echo: pause/stop/volume only, so competing audio
- *    (Spotify) is silenced when MatPlay plays. play/next/previous are NEVER
- *    forwarded — they would drive the Echo's own queue with wrong content.
+ *  - OUTBOUND MatPlay -> Echo: pause/stop only, so competing Spotify audio
+ *    is silenced when MatPlay plays. play/next/previous/volume are NEVER
+ *    forwarded — they would drive the Echo's own player (wrong content,
+ *    "Spotify remote" feel). Volume keys control the local decoder only.
  *  - INBOUND REMOVED: Alexa/voice can no longer control the MatPlay stream.
  *    No voice-history polling, no utterance replay, no transport injection.
  *

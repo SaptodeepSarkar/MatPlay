@@ -230,6 +230,11 @@ export class Mpg123Backend implements AudioBackend {
     }
   }
 
+  childPids(): number[] {
+    const pid = this.proc?.pid;
+    return pid !== undefined ? [pid] : [];
+  }
+
   private send(command: string): void {
     const stdin = this.proc?.stdin;
     if (!stdin || stdin.destroyed) return;

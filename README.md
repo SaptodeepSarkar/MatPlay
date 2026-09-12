@@ -232,9 +232,10 @@ same private API as the Alexa mobile app
 skill, Lambda, or cloud service:
 
 - **MatPlay → Echo (remote only):** while playing, MatPlay sends
-  `pause`/`stop`/volume to the Echo purely to silence competing audio
-  (Spotify). `play`/`next`/`previous` are never forwarded — forwarding them
-  would drive the Echo's own queue with the wrong content.
+  `pause`/`stop` to the Echo purely to silence competing audio
+  (Spotify). `play`/`next`/`previous`/`volume` are never forwarded —
+  forwarding them would drive the Echo's own player with the wrong
+  content. Volume keys control only MatPlay's local decoder volume.
 - **Echo → MatPlay:** removed. There is no voice control. Saying anything
   "on MatPlay" to Alexa does nothing, by design.
 
@@ -253,18 +254,25 @@ Then pair the Echo as a Bluetooth speaker **once**:
 
 Then open **Settings → ALEXA** and flip it **ON**:
 
-- MatPlay **auto-connects only the Echo's Bluetooth MAC** and shows
-  `ECHO <name>` in the top bar with the chosen link in Settings.
+- MatPlay **auto-connects only the Echo's Bluetooth MAC**, **kicks any
+  Spotify stream off the Echo**, and **routes its own ffmpeg/mpg123 audio
+  to the Echo's Bluetooth sink** (default sink switches; only MatPlay's
+  decoder streams are moved). Settings shows `BT <name> · ffmpeg → Echo`
+  and the top bar shows `ECHO <name>`.
 - Your **earphones and other Bluetooth devices are never touched** — no
   disconnects, no re-routing. Only the Echo MAC is ever connected or
   disconnected by MatPlay.
 - While the link is up, nothing else is driven to the Echo: the remote
   only silences competitors so the room hears MatPlay alone.
-- Flip the toggle **OFF** and MatPlay **disconnects just the Echo**,
+- Flip the toggle **OFF** and MatPlay **restores your previous default
+  sink, moves its streams back, disconnects just the Echo**,
   disposes the connector (sockets closed, heavy dependency unloaded),
   hides every Echo trace from the UI, and defaults to normal local
   playback. Cookies refresh automatically; if Amazon changes its login,
   just re-run `npm run alexa:login`.
+- Audio routing needs `pactl` (PipeWire/Pulse on Linux). Without it the
+  link still connects but shows `audio manual` — set the Echo as the
+  output sink yourself (`pactl set-default-sink`).
 - If Bluetooth is unavailable (or the Echo isn't paired yet), the Echo
   stays **hidden** and MatPlay behaves exactly as if Alexa didn't exist.
 
