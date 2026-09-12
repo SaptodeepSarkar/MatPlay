@@ -345,6 +345,13 @@ export function App(): React.ReactNode {
       const cachedPalette = paletteCache.current.get(cachedMeta.coverSrc);
       if (cachedPalette) applyTheme(cachedPalette);
       if (cachedLyrics) setLyrics(cachedLyrics);
+    } else {
+      // Uncached track: drop the previous track's art/title/lyrics
+      // immediately and show this track's folder-name fallback while tags
+      // load — otherwise a no-art song (e.g. CHANGE MY WORLD FUNK) keeps
+      // wearing the previous song's cover (e.g. MONTAGEM ROYAL).
+      setMeta(metaFromFolder(track, FALLBACK_COVER));
+      setLyrics([]);
     }
 
     // Decoder loads are serialized because both backends own one process.
