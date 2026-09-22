@@ -13,6 +13,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "NODE_OPTIONS=--experimental-ffi vitest run",
+    "test:memory": "NODE_OPTIONS=--experimental-ffi vitest run test/processMemory.test.ts --reporter=verbose",
     "test:watch": "NODE_OPTIONS=--experimental-ffi vitest",
     "check": "NODE_OPTIONS=--experimental-ffi tsx src/check.ts",
     "alexa:login": "node scripts/alexa-login.mjs",
