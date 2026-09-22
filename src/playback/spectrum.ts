@@ -17,6 +17,7 @@ export type CavaSpectrumOptions = {
 };
 
 const DEFAULT_BARS = 48;
+const MAX_SPECTRUM_BUFFER = 64 * 1024;
 
 /**
  * Live spectrum data from `cava` in raw-ASCII mode.
@@ -132,6 +133,11 @@ export class CavaSpectrum {
 
   private ingest(text: string): void {
     this.buffer += text;
+    // A broken cava process or malformed output may omit frame delimiters.
+    // Without a cap this string grows forever and can exhaust the player.
+    if (this.buffer.length > MAX_SPECTRUM_BUFFER) {
+      this.buffer = this.buffer.slice(-MAX_SPECTRUM_BUFFER);
+    }
     const newlineIndex = this.buffer.lastIndexOf('\n');
     if (newlineIndex < 0) return;
     const complete = this.buffer.slice(0, newlineIndex);

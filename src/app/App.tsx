@@ -44,6 +44,7 @@ import type { AlexaStatus } from '../alexa/types.js';
 import { ALEXA_FEATURE_ENABLED } from '../alexa/feature.js';
 import { CastServer } from '../cast/server.js';
 import { mergeInputValue } from '../ui/inputValue.js';
+import { BoundedCache } from '../utils/boundedCache.js';
 
 const WIDE_CONTENT_WIDTH = 75;
 const RESTART_THRESHOLD_MS = 3000;
@@ -262,9 +263,13 @@ export function App(): React.ReactNode {
       resetTerminalBackground();
     };
   }, []);
-  const paletteCache = useRef(new Map<string, StitchTheme>());
-  const metaCache = useRef(new Map<string, TrackMeta>());
-  const lyricsCache = useRef(new Map<string, LyricLine[]>());
+  // Track metadata and lyrics are loaded on demand. Keep these caches bounded:
+  // an unbounded Map retains every song's tags, artwork theme, and lyrics for
+  // the entire process lifetime, which can grow into gigabytes in large
+  // libraries or during long listening sessions.
+  const paletteCache = useRef(new BoundedCache<string, StitchTheme>(128));
+  const metaCache = useRef(new BoundedCache<string, TrackMeta>(128));
+  const lyricsCache = useRef(new BoundedCache<string, LyricLine[]>(32));
 
   const applyTheme = (target: StitchTheme): void => {
     const preferred = preferredTheme(target, configRef.current);

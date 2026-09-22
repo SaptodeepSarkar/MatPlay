@@ -138,21 +138,33 @@ export class Mpg123Backend implements AudioBackend {
   }
 
   /** Resolve when the decoder acknowledges the load (@P 1/@P 2). */
-  private loadWaiters: Array<() => void> = [];
+  private loadWaiters = new Set<() => void>();
 
   private waitForLoadAck(): Promise<void> {
     return new Promise((resolve) => {
-      const timer = setTimeout(resolve, 2000);
-      this.loadWaiters.push(() => {
+      let settled = false;
+      let waiter: (() => void) | undefined;
+      const settle = (): void => {
+        if (settled) return;
+        settled = true;
+        if (waiter) this.loadWaiters.delete(waiter);
         clearTimeout(timer);
         resolve();
-      });
+      };
+      const timer = setTimeout(settle, 2000);
+      waiter = (): void => {
+        if (settled) return;
+        settled = true;
+        this.loadWaiters.delete(waiter as () => void);
+        clearTimeout(timer);
+        resolve();
+      };
+      this.loadWaiters.add(waiter);
     });
   }
 
   private flushLoadWaiters(): void {
-    const waiters = this.loadWaiters;
-    this.loadWaiters = [];
+    const waiters = [...this.loadWaiters];
     for (const resolve of waiters) resolve();
   }
 

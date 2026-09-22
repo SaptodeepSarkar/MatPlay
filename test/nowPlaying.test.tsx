@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { testRender } from '@opentui/react/test-utils';
 import { stepViz, applySpectrum } from '../src/ui/visualizerEngine.js';
+import { CavaSpectrum } from '../src/playback/spectrum.js';
 
 function musicFixture(): string {
   const root = mkdtempSync(path.join(os.tmpdir(), 'matplay-app-'));
@@ -151,6 +152,13 @@ describe('now playing mock', () => {
 });
 
 describe('visualizer engine', () => {
+  it('bounds malformed cava output without a frame delimiter', () => {
+    const spectrum = new CavaSpectrum({ bars: 8 });
+    const internal = spectrum as unknown as { ingest: (text: string) => void; buffer: string };
+    internal.ingest('x'.repeat(1_000_000));
+    expect(internal.buffer.length).toBeLessThanOrEqual(64 * 1024);
+  });
+
   it('keeps procedural levels bounded with peaks above levels', () => {
     let state = stepViz({ levels: [], peaks: [] }, 32, 1.0, true);
     for (let t = 2; t < 20; t++) {
