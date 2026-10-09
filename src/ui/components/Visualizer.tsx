@@ -1,4 +1,3 @@
-import { hexToRgb, rgbToHex, type RGB } from '../palette.js';
 import type { StitchTheme } from '../stitchTheme.js';
 
 export type VisualizerProps = {
@@ -9,6 +8,39 @@ export type VisualizerProps = {
   maxHeight: number;
   theme: StitchTheme;
 };
+
+/**
+ * Build the visualizer as terminal cells in one string.  This component is
+ * refreshed continuously, so representing every cell as its own React span
+ * creates thousands of native OpenTUI objects per frame.  OpenTUI releases
+ * those objects asynchronously; over a long session allocation can outrun
+ * cleanup and grow RSS by gigabytes.  One text node keeps the native render
+ * tree constant-sized while preserving the same bar/peak silhouette.
+ */
+export function visualizerText(
+  levels: number[],
+  peaks: number[],
+  rows: number,
+  maxHeight: number,
+): string {
+  const lines: string[] = [];
+  const barRows = Math.max(1, Math.floor(rows * Math.min(1, Math.max(0, maxHeight))));
+
+  for (let row = 0; row < rows; row++) {
+    const fromBottom = rows - 1 - row;
+    let line = '';
+    for (let i = 0; i < levels.length; i++) {
+      const level = levels[i] ?? 0;
+      const peak = peaks[i] ?? 0;
+      const filled = fromBottom < Math.round(level * barRows);
+      const peakRow = Math.max(0, Math.min(barRows - 1, Math.ceil(peak * barRows) - 1));
+      const capped = !filled && fromBottom === peakRow && peak > 0.02;
+      line += capped || filled ? '█ ' : '  ';
+    }
+    lines.push(line);
+  }
+  return lines.join('\n');
+}
 
 /**
  * CAVA-style bar floor, after the Stitch visualizer screen: bottom-anchored
@@ -22,44 +54,9 @@ export function Visualizer({
   maxHeight,
   theme,
 }: VisualizerProps): React.ReactNode {
-  const lines: React.ReactNode[] = [];
-  const barRows = Math.max(1, Math.floor(rows * Math.min(1, Math.max(0, maxHeight))));
-
-  for (let row = 0; row < rows; row++) {
-    const fromBottom = rows - 1 - row;
-    const cells: React.ReactNode[] = [];
-    for (let i = 0; i < levels.length; i++) {
-      const level = levels[i] ?? 0;
-      const peak = peaks[i] ?? 0;
-      const filled = fromBottom < Math.round(level * barRows);
-      const capped =
-        !filled && fromBottom <= Math.round(peak * barRows) && peak > 0.02;
-      // Brightness ramp: dim base swelling to glowing tips, so the field
-      // stays readable behind the UI instead of shouting at full blast.
-      const ramp = Math.pow(Math.min(1, Math.max(0, level)), 1.4);
-      const low = hexToRgb(theme.cardAlt);
-      const high = hexToRgb(theme.accent);
-      const body: RGB = [
-        low[0] + (high[0] - low[0]) * ramp,
-        low[1] + (high[1] - low[1]) * ramp,
-        low[2] + (high[2] - low[2]) * ramp,
-      ];
-      cells.push(
-        <span key={i} fg={capped ? theme.signal : filled ? rgbToHex(body) : theme.appBg}>
-          {capped || filled ? '█' : ' '}
-        </span>,
-      );
-      cells.push(<span key={`g${i}`}> </span>);
-    }
-    // Row box carries the page background: the absolute layer composites
-    // opaquely, so every cell needs a painted ancestor or it punches a
-    // black hole instead of showing the page behind.
-    lines.push(
-      <box key={row} backgroundColor={theme.appBg}>
-        <text>{cells}</text>
-      </box>,
-    );
-  }
-
-  return <box flexDirection="column">{lines}</box>;
+  return (
+    <box backgroundColor={theme.appBg}>
+      <text fg={theme.cardAlt}>{visualizerText(levels, peaks, rows, maxHeight)}</text>
+    </box>
+  );
 }

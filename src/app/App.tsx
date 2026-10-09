@@ -48,6 +48,7 @@ import { BoundedCache } from '../utils/boundedCache.js';
 
 const WIDE_CONTENT_WIDTH = 75;
 const RESTART_THRESHOLD_MS = 3000;
+const VISUALIZER_FRAME_MS = 100;
 function preferredTheme(target: StitchTheme, config: AppConfig): StitchTheme {
   const base = config.theme === 'light' ? stitchFallbackTheme : target;
   return config.accentColor === 'auto' ? base : { ...base, accent: config.accentColor };
@@ -608,7 +609,7 @@ export function App(): React.ReactNode {
         }
         setViz((previous) => stepViz(previous, vizColumns, Date.now() / 1000, isPlaying));
       }
-    }, 66);
+    }, VISUALIZER_FRAME_MS);
     return () => {
       clearInterval(timer);
     };
